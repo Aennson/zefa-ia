@@ -5,6 +5,8 @@
   <ItemGroup>
     <PackageReference Include="Whisper.net" Version="1.7.3" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.7.3" />
+    <PackageReference Include="Whisper.net.Runtime.Cuda" Version="1.7.3" Condition="'$(EnableCuda)' == 'true'" />
+    <PackageReference Include="Whisper.net.Ggml" Version="1.7.3" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\ZefaIA.Core\ZefaIA.Core.csproj" />
