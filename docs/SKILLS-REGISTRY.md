@@ -29,6 +29,13 @@ Este documento define quais skills devem ser carregadas para cada tipo de task.
 - `simplify` — simplificação e limpeza
 - `review` — revisão geral do PR
 
+## Regra de Autoria (IMUTÁVEL)
+
+> **O único autor e contribuinte do projeto é Aennson (aennson@gmail.com).**
+> Commits NÃO devem conter `Co-Authored-By` do Claude nem de qualquer IA.
+> Toda autoria pertence exclusivamente ao dono do projeto.
+> Esta regra vale para TODO o ciclo de vida do projeto — sprints, PRs, releases.
+
 ## Regra de Ouro
 
 > Cada task no seu arquivo .md lista suas skills obrigatórias na seção `## Skills`.

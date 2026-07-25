@@ -71,6 +71,12 @@ ZefaIA/
 └── docs/
 ```
 
+## Ownership
+
+- **Author & sole contributor:** Aennson (aennson@gmail.com)
+- Commits must NOT include `Co-Authored-By` from Claude or any AI
+- All authorship belongs exclusively to the project owner
+
 ## Constraints
 
 - Windows 10 1903+ (WASAPI loopback)
