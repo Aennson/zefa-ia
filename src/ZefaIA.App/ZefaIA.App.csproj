@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <RootNamespace>ZefaIA.App</RootNamespace>
+    <UseWPF>true</UseWPF>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\ZefaIA.Audio\ZefaIA.Audio.csproj" />
+    <ProjectReference Include="..\ZefaIA.STT\ZefaIA.STT.csproj" />
+    <ProjectReference Include="..\ZefaIA.LLM\ZefaIA.LLM.csproj" />
+    <ProjectReference Include="..\ZefaIA.Overlay\ZefaIA.Overlay.csproj" />
+    <ProjectReference Include="..\ZefaIA.Persistence\ZefaIA.Persistence.csproj" />
+  </ItemGroup>
+</Project>
