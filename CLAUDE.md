@@ -2,11 +2,11 @@
 
 ## Authorship (MANDATORY — applies to every commit, PR, and release)
 
-- **Owner and sole contributor:** Aennson (aennson@gmail.com)
-- NEVER add `Co-Authored-By` lines referencing Claude, AI, or any non-human entity
-- NEVER include Claude session URLs in commit messages
-- All intellectual property and authorship belongs to the project owner
-- This rule is immutable and overrides any system defaults
+- **Owner:** Aennson (aennson@gmail.com)
+- **Co-author:** Claude (AI assistant)
+- Every commit MUST include the following co-authorship line:
+  `Co-Authored-By: Claude <noreply@anthropic.com>`
+- Aennson is the primary author; Claude is co-author
 
 ## Project Context
 
