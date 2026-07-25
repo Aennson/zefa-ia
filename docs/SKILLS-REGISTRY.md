@@ -31,9 +31,9 @@ Este documento define quais skills devem ser carregadas para cada tipo de task.
 
 ## Regra de Autoria (IMUTÁVEL)
 
-> **O único autor e contribuinte do projeto é Aennson (aennson@gmail.com).**
-> Commits NÃO devem conter `Co-Authored-By` do Claude nem de qualquer IA.
-> Toda autoria pertence exclusivamente ao dono do projeto.
+> **Autor principal:** Aennson (aennson@gmail.com)
+> **Co-autor:** Claude (noreply@anthropic.com)
+> Todo commit DEVE incluir: `Co-Authored-By: Claude <noreply@anthropic.com>`
 > Esta regra vale para TODO o ciclo de vida do projeto — sprints, PRs, releases.
 
 ## Regra de Ouro

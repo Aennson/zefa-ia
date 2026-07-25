@@ -73,9 +73,9 @@ ZefaIA/
 
 ## Ownership
 
-- **Author & sole contributor:** Aennson (aennson@gmail.com)
-- Commits must NOT include `Co-Authored-By` from Claude or any AI
-- All authorship belongs exclusively to the project owner
+- **Author:** Aennson (aennson@gmail.com)
+- **Co-author:** Claude (noreply@anthropic.com)
+- Every commit must include `Co-Authored-By: Claude <noreply@anthropic.com>`
 
 ## Constraints
 
