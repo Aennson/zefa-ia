@@ -52,6 +52,33 @@ public class ClaudeLLMClientTests
     }
 
     [Fact]
+    public void BuildRequestBody_DisablesThinkingExplicitly()
+    {
+        var config = new LLMSessionConfig("system", "context");
+        var session = CreateTestSession(config);
+
+        var request = session.BuildRequestBody("transcript");
+
+        // Omitting the field would enable adaptive thinking on Claude Sonnet 5, which
+        // spends part of MaxTokens on reasoning and delays the first visible token.
+        Assert.NotNull(request.Thinking);
+        Assert.Equal("disabled", request.Thinking!.Type);
+    }
+
+    [Fact]
+    public void BuildRequestBody_SerializesThinkingIntoTheWireFormat()
+    {
+        var config = new LLMSessionConfig("system", "context");
+        var session = CreateTestSession(config);
+
+        var json = JsonSerializer.Serialize(
+            session.BuildRequestBody("transcript"), LLMJsonContext.Default.ClaudeRequest);
+
+        using var doc = JsonDocument.Parse(json);
+        Assert.Equal("disabled", doc.RootElement.GetProperty("thinking").GetProperty("type").GetString());
+    }
+
+    [Fact]
     public void BuildRequestBody_UsesConfigModelAndTokens()
     {
         var config = new LLMSessionConfig("sys", "ctx", ModelId: "claude-haiku-4-5-20251001", MaxTokens: 256);

@@ -20,7 +20,6 @@ public sealed class ClaudeLLMClient : ILLMClient
 
     internal const string ApiBaseUrl = "https://api.anthropic.com/v1/messages";
     private const string ApiVersion = "2023-06-01";
-    private const string PromptCachingBeta = "prompt-caching-2024-07-31";
 
     public ClaudeLLMClient(
         string? apiKey = null,
@@ -36,7 +35,8 @@ public sealed class ClaudeLLMClient : ILLMClient
 
         _httpClient.DefaultRequestHeaders.Add("x-api-key", _apiKey);
         _httpClient.DefaultRequestHeaders.Add("anthropic-version", ApiVersion);
-        _httpClient.DefaultRequestHeaders.Add("anthropic-beta", PromptCachingBeta);
+        // No anthropic-beta header: prompt caching is generally available, and the old
+        // prompt-caching-2024-07-31 flag is no longer needed to use cache_control.
     }
 
     public Task<ILLMSession> CreateSessionAsync(LLMSessionConfig config, CancellationToken ct = default)
@@ -109,6 +109,12 @@ internal sealed class ClaudeLLMSession : ILLMSession
             Model = _config.ModelId,
             MaxTokens = _config.MaxTokens,
             Stream = true,
+            // Explicit, not incidental. On Claude Sonnet 5 an omitted "thinking" field
+            // means adaptive thinking is ON, the reverse of Sonnet 4. Thinking tokens
+            // count against MaxTokens and delay the first visible token, which would
+            // both truncate the suggestion and stall the live overlay. Turning it on is
+            // a quality/latency tradeoff worth measuring, not a silent default.
+            Thinking = new ThinkingConfig { Type = "disabled" },
             System = new[]
             {
                 new SystemBlock
@@ -273,6 +279,9 @@ internal sealed class ClaudeRequest
     [JsonPropertyName("stream")]
     public bool Stream { get; set; }
 
+    [JsonPropertyName("thinking")]
+    public ThinkingConfig? Thinking { get; set; }
+
     [JsonPropertyName("system")]
     public SystemBlock[] System { get; set; } = [];
 
@@ -296,6 +305,13 @@ internal sealed class CacheControl
 {
     [JsonPropertyName("type")]
     public string Type { get; set; } = "ephemeral";
+}
+
+internal sealed class ThinkingConfig
+{
+    /// <summary>"disabled" or "adaptive". Fixed-budget thinking is rejected on Sonnet 5.</summary>
+    [JsonPropertyName("type")]
+    public string Type { get; set; } = "disabled";
 }
 
 internal sealed class Message

@@ -130,37 +130,55 @@ Nenhuma requisição real foi feita à `api.anthropic.com`. Não há validação
 corpo montado é aceito, de que os headers estão corretos, nem de que o formato do
 stream SSE corresponde ao que a API realmente devolve hoje.
 
-### Problemas já identificados por inspeção — verificar nesta etapa
+### Problemas identificados por inspeção
 
-Encontrados ao ler o código durante a implementação do E2E. Nenhum é pego pelos testes
-atuais justamente porque nenhum teste fala com a API real.
+| # | Achado | Estado |
+|---|---|---|
+| L-01 | **Modelo padrão já retirado.** `ModelId = "claude-sonnet-4-20250514"` — snapshot datado cuja retirada (15/06/2026) já passou; requisições retornariam 404. | **Corrigido** → `claude-sonnet-5` |
+| L-02 | **ID com sufixo de data**, que é o que permitiu L-01 acontecer silenciosamente. | **Corrigido** — alias sem data, com teste que barra regressão (`LLMSessionConfig_ModelIdIsAnUndatedAlias`) |
+| L-03 | **`Temperature = 0.7f` era config morta** — nunca serializada. Virou armadilha: nos modelos atuais `temperature` é rejeitado com 400, então "consertar" passando o campo adiante quebraria. | **Corrigido** — removida de `LLMSessionConfig` e do `appsettings.json` |
+| L-04 | **Header beta obsoleto** `anthropic-beta: prompt-caching-2024-07-31`; prompt caching é GA. | **Corrigido** — header removido, `cache_control` mantido |
+| L-05 | **`MaxTokens = 512`** truncaria sugestões, ainda mais com o tokenizer novo do Sonnet 5 (~30% mais tokens para o mesmo texto). | **Corrigido** → 1024 |
+| L-06 | **HTTP cru em vez do SDK oficial** (`Anthropic` para C#). Migrar tiraria da nossa manutenção o parsing de SSE, headers de versão/beta e retry. | **Em aberto** — dívida técnica |
+| L-07 | **A seção `LLM` do `appsettings.json` não é lida por ninguém.** `MeetingOrchestrator` monta `new LLMSessionConfig(systemPrompt, session.Agenda)` com os defaults do record. Editar o arquivo não muda nada — duas fontes de verdade, uma delas falsa. | **Em aberto** — valores sincronizados e seção marcada como não-vinculada |
 
-| # | Achado | Onde | Risco |
-|---|---|---|---|
-| L-01 | **Modelo padrão provavelmente já retirado.** `ModelId = "claude-sonnet-4-20250514"`. Esse modelo estava marcado para retirada em **15/06/2026** — data já passada. Requisições retornariam **404**. Substituto indicado: `claude-sonnet-5`. | `src/ZefaIA.Core/Models/LLMModels.cs:6` | **Alto — provável falha total do LLM em produção** |
-| L-02 | **ID de modelo com sufixo de data.** Aliases sem data (`claude-sonnet-5`) evitam exatamente esse tipo de expiração silenciosa. | `LLMModels.cs:6` | Médio |
-| L-03 | **`Temperature = 0.7f` é configuração morta.** O campo existe em `LLMSessionConfig` mas `ClaudeRequest` nunca o serializa. Pior: nos modelos atuais `temperature` é **rejeitado com 400** — se alguém "corrigir" passando o campo adiante, quebra. | `LLMModels.cs:8` vs `ClaudeLLMClient.cs:264` | Médio (armadilha) |
-| L-04 | **Header beta de prompt caching obsoleto.** `anthropic-beta: prompt-caching-2024-07-31` é enviado em toda requisição; prompt caching é GA há tempo e não precisa mais de header. | `ClaudeLLMClient.cs:23,39` | Baixo |
-| L-05 | **`MaxTokens = 512`** pode truncar sugestões mais longas no meio. Vale revisar junto com o modelo. | `LLMModels.cs:7` | Baixo |
-| L-06 | **HTTP cru em vez do SDK oficial.** Existe pacote `Anthropic` para C#. Migrar tiraria da nossa manutenção o parsing de SSE, os headers de versão/beta e o retry. | `src/ZefaIA.LLM/ClaudeLLMClient.cs` | Dívida técnica |
+### Consequência de comportamento da troca de modelo
 
-### O que fazer nessa etapa
+No Sonnet 4, **omitir** o campo `thinking` significava "sem thinking". No Claude Sonnet 5,
+omitir significa **thinking adaptativo ligado**. Como os tokens de thinking contam contra
+`MaxTokens` e atrasam o primeiro token visível, a troca de modelo sozinha teria truncado
+as sugestões e travado o overlay ao vivo.
 
-1. Resolver L-01 primeiro — é o único com risco de deixar o produto sem sugestões hoje.
-   Confirmar o status do modelo antes de escolher o substituto.
-2. Reavaliar L-03/L-04/L-05 à luz da API atual (parâmetros de sampling, thinking,
-   headers beta mudaram desde que este código foi escrito).
-3. Decidir sobre L-06 (SDK oficial) antes de investir em mais código de transporte.
-4. Criar um teste de integração real, opt-in por variável de ambiente, no mesmo padrão
-   já usado em `ZefaIA.STT.Tests`:
+Por isso o cliente agora envia `thinking: {"type": "disabled"}` **explicitamente** —
+preservando o comportamento atual em vez de herdar um default novo por acidente.
 
-   ```csharp
-   [OptInFact("ZEFA_RUN_ANTHROPIC_INTEGRATION", "Requires a real ANTHROPIC_API_KEY")]
-   public async Task RealApi_StreamsASuggestion() { ... }
-   ```
+> **A avaliar depois:** ligar thinking adaptativo com `effort: "low"` pode melhorar a
+> qualidade das sugestões. É um trade-off de qualidade × latência que precisa ser medido
+> num cenário real de reunião, não decidido no papel.
 
-   Deve validar, contra a API de verdade: requisição aceita (sem 400/404), stream SSE
-   parseado, `stop_reason` tratado, e uso de tokens reportado.
+### Verificação contra a API real
+
+`tests/ZefaIA.LLM.Tests/ClaudeLLMClientLiveApiTests.cs` — 3 testes opt-in que batem em
+`api.anthropic.com` de verdade. Todo o restante do projeto usa `HttpMessageHandler`
+mockado, o que prova que o cliente interpreta o que **achamos** que a API devolve, não
+que a API aceita o que enviamos.
+
+| Teste | O que pega |
+|---|---|
+| `LiveApi_DefaultConfig_IsAcceptedAndStreamsTokens` | Config de produção aceita; stream SSE produz tokens não-vazios |
+| `LiveApi_ConfiguredModelExists` | 404 por modelo retirado — exatamente a falha do L-01 |
+| `LiveApi_PromptCachingStillWorksWithoutTheBetaHeader` | `cache_control` rejeitado se a remoção do header beta (L-04) estiver errada |
+
+```powershell
+$env:ANTHROPIC_API_KEY = "sk-ant-..."
+$env:ZEFA_RUN_ANTHROPIC_INTEGRATION = "1"
+dotnet test tests/ZefaIA.LLM.Tests --filter "FullyQualifiedName~LiveApi"
+```
+
+> ⚠️ **Estes testes nunca foram executados.** Não há credencial disponível na máquina de
+> desenvolvimento, então a correção do L-01 está validada por compilação, testes de
+> unidade e inspeção — **não** contra a API real. Rodar isto é o primeiro passo assim que
+> houver uma chave, e é o que fecha definitivamente o L-01.
 
 ## Como executar
 

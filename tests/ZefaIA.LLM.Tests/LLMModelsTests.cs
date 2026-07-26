@@ -10,9 +10,19 @@ public class LLMModelsTests
     {
         var config = new LLMSessionConfig("system prompt", "meeting context");
 
-        Assert.Equal("claude-sonnet-4-20250514", config.ModelId);
-        Assert.Equal(512, config.MaxTokens);
-        Assert.Equal(0.7f, config.Temperature);
+        Assert.Equal("claude-sonnet-5", config.ModelId);
+        Assert.Equal(1024, config.MaxTokens);
+    }
+
+    [Fact]
+    public void LLMSessionConfig_ModelIdIsAnUndatedAlias()
+    {
+        var config = new LLMSessionConfig("system prompt", "meeting context");
+
+        // A dated snapshot is what broke this before: claude-sonnet-4-20250514 hit its
+        // retirement date and every request would have started failing. Aliases do not
+        // expire, so keep the default free of a date suffix.
+        Assert.DoesNotMatch(@"-\d{8}$", config.ModelId);
     }
 
     [Fact]
