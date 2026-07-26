@@ -3,7 +3,7 @@ using ZefaIA.Core.Models;
 
 namespace ZefaIA.Overlay;
 
-public class OverlayController : IDisposable
+public class OverlayController : IOverlayController
 {
     private readonly OverlayWindow _window;
     private IDisposable? _transcriptionSubscription;

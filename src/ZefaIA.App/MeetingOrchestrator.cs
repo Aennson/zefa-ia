@@ -127,8 +127,8 @@ public sealed class MeetingOrchestrator : IAsyncDisposable
 
         // --- Audio ---
         _captureEngine = new AudioCaptureEngine(_services.LoggerFactory.CreateLogger<AudioCaptureEngine>());
-        _captureEngine.AddSource(new MicrophoneSource());
-        _captureEngine.AddSource(new LoopbackSource());
+        foreach (var source in _services.AudioSourceFactory())
+            _captureEngine.AddSource(source);
 
         var echoCanceller = new EchoCanceller(
             logger: _services.LoggerFactory.CreateLogger<EchoCanceller>());

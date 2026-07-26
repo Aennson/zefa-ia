@@ -29,6 +29,15 @@ docs/tests/
 - Testes marcados com `Skip` indicam dependencia de hardware (Windows audio device)
 - Framework: **xUnit** com **Moq** para mocking
 
+## Testes ponta a ponta (E2E)
+
+Ver [`E2E-COVERAGE.md`](E2E-COVERAGE.md) — 21 testes em `tests/ZefaIA.Integration.Tests`
+dirigem o `MeetingOrchestrator` de producao (audio -> STT -> trigger -> LLM -> overlay
+-> SQLite -> export), com apenas as fronteiras de processo substituidas.
+
+Esse documento tambem registra a **lacuna de integracao real com a API da Anthropic**,
+adiada para uma etapa propria, com os 6 problemas ja identificados por inspecao.
+
 ## Ultima execucao real
 
 Ver [`WINDOWS-TEST-RUN.md`](WINDOWS-TEST-RUN.md) — primeira execucao em Windows real

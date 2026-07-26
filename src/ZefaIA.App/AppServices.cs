@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using ZefaIA.Audio;
 using ZefaIA.Core.Triggers;
 using ZefaIA.Core.Interfaces;
 using ZefaIA.LLM;
@@ -25,7 +26,15 @@ public sealed class AppServices : IAsyncDisposable
 
     public bool IsLlmEnabled => LlmClient != null;
     public required IMeetingRepository Repository { get; init; }
-    public required OverlayController Overlay { get; init; }
+    public required IOverlayController Overlay { get; init; }
+
+    /// <summary>
+    /// Builds the capture sources for a meeting. Defaults to the real WASAPI
+    /// microphone + loopback pair; substituting it lets the pipeline be driven from
+    /// synthetic audio, which is how the end-to-end tests run without hardware.
+    /// </summary>
+    public Func<IEnumerable<IAudioSource>> AudioSourceFactory { get; init; } =
+        static () => new IAudioSource[] { new MicrophoneSource(), new LoopbackSource() };
 
     public int AudioBufferSizeMs { get; init; } = 100;
     public OrchestratorConfig OrchestratorConfig { get; init; } = new();
