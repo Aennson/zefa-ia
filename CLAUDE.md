@@ -21,6 +21,11 @@ Sprint plans and tasks live in `docs/sprint-N/`. Each task file defines:
 - Acceptance criteria
 - Test plan
 
+## Git Branch Rule (MANDATORY)
+
+- **SEMPRE** trabalhe na branch `master`. Nunca crie ou use outra branch a nao ser que o usuario solicite explicitamente.
+- Todos os commits e pushes devem ir para `master`.
+
 ## Code Standards
 
 - .NET 8, C# 12
