@@ -39,6 +39,24 @@ public sealed class STTServiceManager : IAsyncDisposable
 
     public async Task<ISTTProvider> InitializeActiveProviderAsync(CancellationToken ct = default)
     {
+        var provider = await CreateProviderAsync(ct);
+
+        lock (_lock)
+        {
+            _activeProvider = provider;
+        }
+
+        _logger?.LogInformation("STT provider initialized: {Provider}", provider.ProviderId);
+        return provider;
+    }
+
+    /// <summary>
+    /// Builds a provider from the current settings without making it the active one.
+    /// The mic and loopback channels each need their own instance because a provider
+    /// carries per-stream audio buffer state; the caller owns disposal.
+    /// </summary>
+    public async Task<ISTTProvider> CreateProviderAsync(CancellationToken ct = default)
+    {
         var providerType = ParseProviderType(_settings.ActiveProvider);
         var config = BuildConfig(providerType);
 
@@ -47,12 +65,6 @@ public sealed class STTServiceManager : IAsyncDisposable
         var provider = _factory.Create(config);
         await provider.InitializeAsync(config, ct);
 
-        lock (_lock)
-        {
-            _activeProvider = provider;
-        }
-
-        _logger?.LogInformation("STT provider initialized: {Provider}", provider.ProviderId);
         return provider;
     }
 
