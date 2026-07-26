@@ -31,10 +31,20 @@ Assistente de reunioes em tempo real para Windows. Captura audio dual (microfone
 
 | Servico | Variavel de Ambiente | Quando |
 |---------|---------------------|--------|
-| Claude (Anthropic) | `ANTHROPIC_API_KEY` | Sugestoes via LLM (Sprint 4+) |
+| Claude (Anthropic) | `ANTHROPIC_API_KEY` | Sugestoes via LLM |
 | ElevenLabs | `ELEVENLABS_API_KEY` | STT alternativo ao Whisper local |
 
 > O Whisper local funciona **sem nenhuma API key** — roda 100% offline.
+> Sem `ANTHROPIC_API_KEY` o app inicia normalmente em modo so-transcricao:
+> grava, salva no historico e exporta; apenas as sugestoes ficam desligadas.
+
+## Uso
+
+Guia completo em **[`docs/USAGE.md`](docs/USAGE.md)** — instalacao, configuracao
+de perfil, atalhos, escolha de provedor de STT e troubleshooting.
+
+O app nao tem janela principal: apos iniciar, ele vive no system tray.
+Botao direito no icone → Nova Reuniao, Historico, Configuracoes.
 
 ## Build
 
@@ -46,11 +56,14 @@ cd zefa-ia
 # Compilar
 dotnet build
 
-# Rodar testes (325 testes, os de hardware sao Skip automaticamente)
+# Rodar testes (457 testes, os de hardware sao Skip automaticamente)
 dotnet test
 
 # Executar
 dotnet run --project src/ZefaIA.App
+
+# Gerar o instalador (requer Inno Setup 6)
+pwsh installer/build-installer.ps1
 ```
 
 ### Modelo Whisper
@@ -79,16 +92,19 @@ zefa-ia/
 │   ├── ZefaIA.LLM/            # Cliente LLM (Claude API)
 │   ├── ZefaIA.Overlay/        # Janela overlay WPF
 │   ├── ZefaIA.Persistence/    # SQLite, recorder de reuniao, exportacao
-│   └── ZefaIA.App/            # Aplicacao WPF principal, DI, config
+│   └── ZefaIA.App/            # Orquestracao, system tray, bootstrap, crash reports
 ├── tests/
 │   ├── ZefaIA.Audio.Tests/       # 44 testes de audio
 │   ├── ZefaIA.STT.Tests/         # 82 testes de STT e deteccao de idioma
 │   ├── ZefaIA.Overlay.Tests/     # 44 testes de overlay, settings e historico
 │   ├── ZefaIA.LLM.Tests/         # 82 testes de LLM, triggers e orquestracao
 │   ├── ZefaIA.Persistence.Tests/ # 73 testes de SQLite, recorder e export
+│   ├── ZefaIA.App.Tests/         # 132 testes de orquestracao e resiliencia
 │   └── ZefaIA.Integration.Tests/
+├── installer/                 # Script Inno Setup e build do instalador
 └── docs/
     ├── PROJECT-SPEC.md        # Especificacao completa
+    ├── USAGE.md               # Guia de uso e troubleshooting
     ├── sprint-1/ a sprint-6/  # Plano de sprints e tasks
     └── tests/                 # Documentacao de cada teste
 ```
@@ -176,7 +192,7 @@ Antes de deletar, e possivel exportar a reuniao em TXT (transcricao legivel com 
 | 3 | Overlay WPF | Concluido |
 | 4 | Integracao LLM | Concluido |
 | 5 | Persistencia e Config | Concluido |
-| 6 | Integracao e Polish | Pendente |
+| 6 | Integracao e Polish | Concluido |
 
 ### Sprint 1 — Captura de Audio
 Captura dual (mic + loopback), resampling automatico (48kHz float32 stereo → 16kHz int16 mono), echo cancellation com filtro NLMS, pipeline reativo com System.Reactive, e exportacao WAV para debug.
@@ -194,7 +210,9 @@ ClaudeLLMClient com SSE streaming e prompt caching (`cache_control` ephemeral), 
 Persistencia SQLite via ADO.NET puro (`Microsoft.Data.Sqlite`, sem EF Core) com tres tabelas e cascade delete garantido por `Foreign Keys=True`, MeetingRecorder que persiste transcricoes em batch durante a reuniao e faz flush no encerramento, dialogo de nova reuniao com templates (1:1, Standup, Review, Custom) e inicio rapido, tela de historico com busca full-text na transcricao e exclusao com confirmacao, LanguageDetector que agrega o idioma dos segmentos e adapta os labels de speaker, exportacao TXT (com sugestoes inline) e JSON.
 
 ### Sprint 6 — Integracao e Polish
-Fluxo end-to-end, system tray, installer, performance tuning para latencia < 2s.
+MeetingOrchestrator montando o grafo audio -> STT -> LLM -> overlay -> persistencia por reuniao, StageRunner com startup fail-fast + rollback e shutdown best-effort (uma stage que falha nao impede o flush da persistencia), app tray-only com estado visual, degradacao para modo so-transcricao quando falta a API key, RetryPolicy com backoff e jitter, HealthTracker por componente, scrubber de segredos e crash reports locais, instrumentacao de latencia por estagio com percentis, installer Inno Setup self-contained e guia de uso.
+
+> **Validacao pendente:** o codigo do Sprint 6 nao foi compilado nem executado — o projeto e Windows-only e o ambiente de desenvolvimento usado nao tem o SDK .NET. Faltam os numeros reais do benchmark de latencia (Task 6-4) e a verificacao do instalador em VM limpa (Task 6-5). Checklist em [`installer/README.md`](installer/README.md).
 
 ## Testes
 
@@ -219,7 +237,13 @@ Testes que requerem hardware de audio ou API keys sao marcados com `[Fact(Skip =
 | ZefaIA.Overlay.Tests | 44 | Models, NativeMethods, controller, markdown parser, AppSettings, templates, historico |
 | ZefaIA.LLM.Tests | 82 | Claude client, prompt builder, triggers, pipeline, orchestrator |
 | ZefaIA.Persistence.Tests | 73 | Repositorio SQLite, cascade delete, recorder, exportacao TXT/JSON |
-| **Total** | **325** | |
+| ZefaIA.App.Tests | 132 | Stage runner, bootstrap, tray, retry, health, scrubber, latencia |
+| **Total** | **457** | |
+
+> Os testes nunca foram executados neste repositorio — o alvo e `net8.0-windows` e
+> nao havia SDK .NET no ambiente de desenvolvimento. Os numeros acima contam
+> `[Fact]` e casos de `[InlineData]`, nao execucoes. Rode `dotnet test` no Windows
+> antes de confiar neles.
 
 ## Decisoes Tecnicas
 
