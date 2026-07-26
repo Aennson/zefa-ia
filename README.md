@@ -46,7 +46,7 @@ cd zefa-ia
 # Compilar
 dotnet build
 
-# Rodar testes (110 testes, os de hardware sao Skip automaticamente)
+# Rodar testes (140+ testes, os de hardware sao Skip automaticamente)
 dotnet test
 
 # Executar
@@ -83,6 +83,7 @@ zefa-ia/
 ├── tests/
 │   ├── ZefaIA.Audio.Tests/    # 49 testes de audio
 │   ├── ZefaIA.STT.Tests/      # 62 testes de STT
+│   ├── ZefaIA.Overlay.Tests/  # 30 testes de overlay e settings
 │   ├── ZefaIA.LLM.Tests/      # Testes do LLM
 │   └── ZefaIA.Integration.Tests/
 └── docs/
@@ -157,7 +158,7 @@ Altere `STT.ActiveProvider` para `"WhisperLocal"` ou `"ElevenLabs"`. O hot-swap 
 |--------|------|--------|
 | 1 | Captura de Audio | Concluido |
 | 2 | Speech-to-Text | Concluido |
-| 3 | Overlay WPF | Pendente |
+| 3 | Overlay WPF | Concluido |
 | 4 | Integracao LLM | Pendente |
 | 5 | Persistencia e Config | Pendente |
 | 6 | Integracao e Polish | Pendente |
@@ -169,7 +170,7 @@ Captura dual (mic + loopback), resampling automatico (48kHz float32 stereo → 1
 Whisper local via whisper.net com buffer de audio e VAD, ElevenLabs via WebSocket com reconnection automatica, TranscriptionEngine conectando streams ao STT, diarizacao por stream (mic="Eu", loopback="Interlocutor"), factory com hot-swap de providers.
 
 ### Sprint 3 — Overlay WPF
-Janela topmost click-through invisivel para screen sharing, mini controles (copiar, fixar, dispensar), animacoes e temas.
+Janela topmost click-through com `WS_EX_TRANSPARENT`/`WS_EX_LAYERED`, excluida de captura via `SetWindowDisplayAffinity`, mini controles (copiar, fixar, dispensar) com hit-testing seletivo, display de transcricao live com ObservableCollection, area de sugestoes com streaming de markdown, SimpleMarkdownParser (bold/italic/listas → WPF Inlines), Settings UI completa (STT, perfil, overlay), AppSettings com persistencia JSON.
 
 ### Sprint 4 — Integracao LLM
 Claude API com prompt caching, triggers por silencio e hotkey, streaming de sugestoes para o overlay.
@@ -200,8 +201,9 @@ Testes que requerem hardware de audio ou API keys sao marcados com `[Fact(Skip =
 |---------|--------|-----------|
 | ZefaIA.Audio.Tests | 49 | Resampler, captura, AEC, pipeline, WAV |
 | ZefaIA.STT.Tests | 62 | Factory, Whisper, ElevenLabs, engine, timeline, config |
+| ZefaIA.Overlay.Tests | 30 | Models, NativeMethods, controller, markdown parser, AppSettings |
 | ZefaIA.LLM.Tests | 3 | Models e defaults |
-| **Total** | **110+** | |
+| **Total** | **140+** | |
 
 ## Decisoes Tecnicas
 
