@@ -190,6 +190,45 @@ public sealed class SqliteMeetingRepositoryTests : IAsyncLifetime, IAsyncDisposa
         await _repo.DeleteSessionAsync(999);
     }
 
+    [Fact]
+    public async Task DeleteSessionAsync_CascadesToTranscriptions()
+    {
+        var session = await _repo.CreateSessionAsync(MakeSession("Cascade"));
+        await _repo.AddTranscriptionAsync(MakeTranscription(session.Id, "Should vanish"));
+
+        await _repo.DeleteSessionAsync(session.Id);
+
+        var entries = await _repo.GetTranscriptionsAsync(session.Id);
+        Assert.Empty(entries);
+    }
+
+    [Fact]
+    public async Task DeleteSessionAsync_CascadesToSuggestions()
+    {
+        var session = await _repo.CreateSessionAsync(MakeSession("Cascade"));
+        await _repo.AddSuggestionAsync(MakeSuggestion(session.Id, "Should vanish"));
+
+        await _repo.DeleteSessionAsync(session.Id);
+
+        var suggestions = await _repo.GetSuggestionsAsync(session.Id);
+        Assert.Empty(suggestions);
+    }
+
+    [Fact]
+    public async Task DeleteSessionAsync_LeavesOtherSessionsIntact()
+    {
+        var keep = await _repo.CreateSessionAsync(MakeSession("Keep"));
+        var drop = await _repo.CreateSessionAsync(MakeSession("Drop"));
+        await _repo.AddTranscriptionAsync(MakeTranscription(keep.Id, "Survives"));
+        await _repo.AddTranscriptionAsync(MakeTranscription(drop.Id, "Vanishes"));
+
+        await _repo.DeleteSessionAsync(drop.Id);
+
+        var kept = await _repo.GetTranscriptionsAsync(keep.Id);
+        Assert.Single(kept);
+        Assert.Equal("Survives", kept[0].Text);
+    }
+
     #endregion
 
     #region Transcriptions

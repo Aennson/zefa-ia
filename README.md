@@ -46,7 +46,7 @@ cd zefa-ia
 # Compilar
 dotnet build
 
-# Rodar testes (200+ testes, os de hardware sao Skip automaticamente)
+# Rodar testes (325 testes, os de hardware sao Skip automaticamente)
 dotnet test
 
 # Executar
@@ -78,13 +78,14 @@ zefa-ia/
 │   ├── ZefaIA.STT/            # Providers de STT (Whisper, ElevenLabs)
 │   ├── ZefaIA.LLM/            # Cliente LLM (Claude API)
 │   ├── ZefaIA.Overlay/        # Janela overlay WPF
-│   ├── ZefaIA.Persistence/    # Armazenamento SQLite
+│   ├── ZefaIA.Persistence/    # SQLite, recorder de reuniao, exportacao
 │   └── ZefaIA.App/            # Aplicacao WPF principal, DI, config
 ├── tests/
-│   ├── ZefaIA.Audio.Tests/    # 49 testes de audio
-│   ├── ZefaIA.STT.Tests/      # 62 testes de STT
-│   ├── ZefaIA.Overlay.Tests/  # 30 testes de overlay e settings
-│   ├── ZefaIA.LLM.Tests/      # Testes do LLM
+│   ├── ZefaIA.Audio.Tests/       # 44 testes de audio
+│   ├── ZefaIA.STT.Tests/         # 82 testes de STT e deteccao de idioma
+│   ├── ZefaIA.Overlay.Tests/     # 44 testes de overlay, settings e historico
+│   ├── ZefaIA.LLM.Tests/         # 82 testes de LLM, triggers e orquestracao
+│   ├── ZefaIA.Persistence.Tests/ # 73 testes de SQLite, recorder e export
 │   └── ZefaIA.Integration.Tests/
 └── docs/
     ├── PROJECT-SPEC.md        # Especificacao completa
@@ -138,6 +139,20 @@ Edite `src/ZefaIA.App/appsettings.json`:
 
 Altere `STT.ActiveProvider` para `"WhisperLocal"` ou `"ElevenLabs"`. O hot-swap tambem pode ser feito em runtime sem reiniciar o app.
 
+## Dados das Reunioes
+
+Transcricoes e sugestoes ficam em um banco SQLite local:
+
+```
+%APPDATA%\ZefaIA\meetings.db
+```
+
+Nada e enviado para servidor proprio — as unicas chamadas externas sao para a API do Claude (sugestoes) e, se configurado, ElevenLabs (STT). O banco guarda tres tabelas: `MeetingSessions`, `TranscriptionEntries` e `SuggestionEntries`, as duas ultimas com `ON DELETE CASCADE`.
+
+Para exercer o direito de exclusao (LGPD): a tela de historico tem botao "Deletar" com confirmacao, que remove a sessao e todos os dados associados. Deletar o arquivo `meetings.db` apaga todo o historico de uma vez.
+
+Antes de deletar, e possivel exportar a reuniao em TXT (transcricao legivel com sugestoes inline) ou JSON (dados estruturados completos) pela tela de historico.
+
 ## Tecnologias
 
 | Componente | Tecnologia | Versao |
@@ -150,7 +165,7 @@ Altere `STT.ActiveProvider` para `"WhisperLocal"` ou `"ElevenLabs"`. O hot-swap 
 | STT cloud | ElevenLabs Scribe v2 | WebSocket |
 | LLM | Claude API (Anthropic) | - |
 | Testes | xUnit + Moq | 2.9.2 / 4.20.72 |
-| Persistencia | SQLite | - |
+| Persistencia | Microsoft.Data.Sqlite | 8.0.8 |
 
 ## Roadmap (Sprints)
 
@@ -160,7 +175,7 @@ Altere `STT.ActiveProvider` para `"WhisperLocal"` ou `"ElevenLabs"`. O hot-swap 
 | 2 | Speech-to-Text | Concluido |
 | 3 | Overlay WPF | Concluido |
 | 4 | Integracao LLM | Concluido |
-| 5 | Persistencia e Config | Pendente |
+| 5 | Persistencia e Config | Concluido |
 | 6 | Integracao e Polish | Pendente |
 
 ### Sprint 1 — Captura de Audio
@@ -176,7 +191,7 @@ Janela topmost click-through com `WS_EX_TRANSPARENT`/`WS_EX_LAYERED`, excluida d
 ClaudeLLMClient com SSE streaming e prompt caching (`cache_control` ephemeral), retry com backoff em 429/500, PromptBuilder com perfil do usuario e contexto de reuniao, SilenceTrigger com deteccao RMS e cooldown, HotkeyTrigger global via Win32 `RegisterHotKey`, SuggestionStreamPipeline com maquina de estados e filtragem de `[SEM SUGESTAO]`, SuggestionOrchestrator com rate limiting e deduplicacao.
 
 ### Sprint 5 — Persistencia e Config
-SQLite para sessoes de reuniao, editor de perfil, contexto de reuniao, UI de configuracoes.
+Persistencia SQLite via ADO.NET puro (`Microsoft.Data.Sqlite`, sem EF Core) com tres tabelas e cascade delete garantido por `Foreign Keys=True`, MeetingRecorder que persiste transcricoes em batch durante a reuniao e faz flush no encerramento, dialogo de nova reuniao com templates (1:1, Standup, Review, Custom) e inicio rapido, tela de historico com busca full-text na transcricao e exclusao com confirmacao, LanguageDetector que agrega o idioma dos segmentos e adapta os labels de speaker, exportacao TXT (com sugestoes inline) e JSON.
 
 ### Sprint 6 — Integracao e Polish
 Fluxo end-to-end, system tray, installer, performance tuning para latencia < 2s.
@@ -199,11 +214,12 @@ Testes que requerem hardware de audio ou API keys sao marcados com `[Fact(Skip =
 
 | Projeto | Testes | Cobertura |
 |---------|--------|-----------|
-| ZefaIA.Audio.Tests | 49 | Resampler, captura, AEC, pipeline, WAV |
-| ZefaIA.STT.Tests | 62 | Factory, Whisper, ElevenLabs, engine, timeline, config |
-| ZefaIA.Overlay.Tests | 30 | Models, NativeMethods, controller, markdown parser, AppSettings |
-| ZefaIA.LLM.Tests | 69 | Claude client, prompt builder, triggers, pipeline, orchestrator |
-| **Total** | **210+** | |
+| ZefaIA.Audio.Tests | 44 | Resampler, captura, AEC, pipeline, WAV |
+| ZefaIA.STT.Tests | 82 | Factory, Whisper, ElevenLabs, engine, timeline, config, deteccao de idioma |
+| ZefaIA.Overlay.Tests | 44 | Models, NativeMethods, controller, markdown parser, AppSettings, templates, historico |
+| ZefaIA.LLM.Tests | 82 | Claude client, prompt builder, triggers, pipeline, orchestrator |
+| ZefaIA.Persistence.Tests | 73 | Repositorio SQLite, cascade delete, recorder, exportacao TXT/JSON |
+| **Total** | **325** | |
 
 ## Decisoes Tecnicas
 

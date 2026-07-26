@@ -9,7 +9,13 @@ public sealed class SqliteMeetingRepository : IMeetingRepository
 
     public SqliteMeetingRepository(string dbPath)
     {
-        _connectionString = $"Data Source={dbPath}";
+        // Foreign Keys=True is required for the ON DELETE CASCADE in the schema to
+        // fire; SQLite ignores cascade rules when the pragma is off.
+        _connectionString = new SqliteConnectionStringBuilder
+        {
+            DataSource = dbPath,
+            ForeignKeys = true
+        }.ToString();
     }
 
     public static string DefaultDbPath =>
