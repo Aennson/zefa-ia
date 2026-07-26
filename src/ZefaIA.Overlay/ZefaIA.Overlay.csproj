@@ -1,6 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <RootNamespace>ZefaIA.Overlay</RootNamespace>
+    <!-- Required by [LibraryImport] source generator (P/Invoke in NativeMethods.cs) -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- NativeMethods P/Invoke wrappers are internal but unit-tested directly. -->
+    <InternalsVisibleTo Include="ZefaIA.Overlay.Tests" />
+    <InternalsVisibleTo Include="ZefaIA.Integration.Tests" />
+    <!-- UseWPF replaces the default implicit-using set, which drops System.IO. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+  <PropertyGroup>
     <UseWPF>true</UseWPF>
   </PropertyGroup>
   <ItemGroup>

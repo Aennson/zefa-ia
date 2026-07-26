@@ -19,6 +19,10 @@ obj/
 publish/
 artifacts/
 
+## Test output (dotnet test --logger trx)
+TestResults/
+*.trx
+
 ## OS
 .DS_Store
 Thumbs.db

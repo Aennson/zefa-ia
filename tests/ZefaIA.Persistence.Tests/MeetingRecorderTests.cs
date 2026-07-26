@@ -1,3 +1,4 @@
+using Xunit;
 using System.Reactive.Subjects;
 using ZefaIA.Core.Models;
 using ZefaIA.Persistence;

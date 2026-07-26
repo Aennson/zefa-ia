@@ -71,6 +71,36 @@ Type: filesandordirs; Name: "{app}"
 // The Whisper model is downloaded on first use rather than bundled, which keeps
 // the installer around 80 MB instead of 220 MB.
 
+// The .NET payload is self-contained, but Whisper.net's native whisper.dll /
+// ggml-whisper.dll are built with MSVC and link against the VC++ 2015-2022 runtime.
+// Without it they fail to load with Win32 error 126 and speech-to-text is dead on
+// arrival, so warn at install time rather than letting the user discover it mid-meeting.
+function VCRuntimeInstalled: Boolean;
+var
+  Installed: Cardinal;
+begin
+  Result := RegQueryDWordValue(HKLM, 'SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64',
+                               'Installed', Installed) and (Installed = 1);
+  if not Result then
+    Result := FileExists(ExpandConstant('{sys}\vcruntime140.dll'));
+end;
+
+function InitializeSetup: Boolean;
+begin
+  Result := True;
+  if VCRuntimeInstalled then
+    Exit;
+
+  if MsgBox('O Microsoft Visual C++ 2015-2022 Redistributable (x64) nao foi encontrado.' + #13#10 + #13#10 +
+            'Ele e necessario para a transcricao local (Whisper). Sem ele, o Zefa IA instala' + #13#10 +
+            'normalmente mas a transcricao nao funciona.' + #13#10 + #13#10 +
+            'Instale por:  winget install Microsoft.VCRedist.2015+.x64' + #13#10 +
+            'ou baixe em:  https://aka.ms/vs/17/release/vc_redist.x64.exe' + #13#10 + #13#10 +
+            'Deseja continuar a instalacao mesmo assim?',
+            mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDNO then
+    Result := False;
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   DataDir: String;

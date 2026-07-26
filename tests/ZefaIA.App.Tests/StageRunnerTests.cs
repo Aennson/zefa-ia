@@ -1,3 +1,4 @@
+using Xunit;
 using ZefaIA.App.Pipeline;
 
 namespace ZefaIA.App.Tests;

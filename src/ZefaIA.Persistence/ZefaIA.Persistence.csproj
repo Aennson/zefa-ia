@@ -3,6 +3,11 @@
     <RootNamespace>ZefaIA.Persistence</RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <!-- SessionExporter's formatting helpers are internal but unit-tested directly. -->
+    <InternalsVisibleTo Include="ZefaIA.Persistence.Tests" />
+    <InternalsVisibleTo Include="ZefaIA.Integration.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.8" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
     <PackageReference Include="System.Reactive" Version="6.0.1" />

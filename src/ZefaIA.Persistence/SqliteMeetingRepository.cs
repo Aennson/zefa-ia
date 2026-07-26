@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.Data.Sqlite;
 
 namespace ZefaIA.Persistence;
@@ -161,7 +162,7 @@ public sealed class SqliteMeetingRepository : IMeetingRepository
                 SpeakerName = reader.GetString(2),
                 Text = reader.GetString(3),
                 IsFinal = reader.GetBoolean(4),
-                Timestamp = DateTime.Parse(reader.GetString(5)),
+                Timestamp = ParseTimestamp(reader.GetString(5)),
                 StartTimeSeconds = reader.GetDouble(6)
             });
         }
@@ -211,7 +212,7 @@ public sealed class SqliteMeetingRepository : IMeetingRepository
                 Text = reader.GetString(2),
                 TriggerReason = reader.GetString(3),
                 TranscriptContext = reader.GetString(4),
-                Timestamp = DateTime.Parse(reader.GetString(5)),
+                Timestamp = ParseTimestamp(reader.GetString(5)),
                 InputTokens = reader.GetInt32(6),
                 OutputTokens = reader.GetInt32(7)
             });
@@ -268,9 +269,18 @@ public sealed class SqliteMeetingRepository : IMeetingRepository
         Objective = reader.GetString(3),
         Participants = reader.GetString(4),
         DetectedLanguage = reader.GetString(5),
-        StartedAt = DateTime.Parse(reader.GetString(6)),
-        EndedAt = reader.IsDBNull(7) ? null : DateTime.Parse(reader.GetString(7))
+        StartedAt = ParseTimestamp(reader.GetString(6)),
+        EndedAt = reader.IsDBNull(7) ? null : ParseTimestamp(reader.GetString(7))
     };
+
+    /// <summary>
+    /// Timestamps are written with "o", which carries the offset. A plain DateTime.Parse
+    /// would shift a UTC value into local time and return Kind=Local, so a session stored
+    /// at 10:00Z reads back as 07:00-03:00 — same instant, but every downstream consumer
+    /// that formats or re-serializes it produces the wrong string.
+    /// </summary>
+    private static DateTime ParseTimestamp(string value) =>
+        DateTime.Parse(value, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind);
 
     private SqliteConnection CreateConnection() => new(_connectionString);
 
@@ -282,7 +292,18 @@ public sealed class SqliteMeetingRepository : IMeetingRepository
 
     public ValueTask DisposeAsync()
     {
+        if (_disposed) return ValueTask.CompletedTask;
         _disposed = true;
+
+        // Microsoft.Data.Sqlite pools connections, so disposing each SqliteConnection
+        // returns it to the pool rather than closing the underlying file handle. The
+        // handle keeps the .db locked, which blocks deleting, moving, or backing it up
+        // after the repository is gone. Draining the pool releases it for good.
+        using (var conn = CreateConnection())
+        {
+            SqliteConnection.ClearPool(conn);
+        }
+
         return ValueTask.CompletedTask;
     }
 

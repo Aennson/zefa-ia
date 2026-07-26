@@ -119,7 +119,8 @@ public class WhisperSTTProviderTests
             () => provider.ProcessAudioAsync(chunk));
     }
 
-    [Fact(Skip = "Requires Whisper model download - run manually")]
+    [OptInFact("ZEFA_RUN_WHISPER_INTEGRATION",
+        "Downloads the ~150MB Whisper base model and needs the VC++ 2015-2022 runtime")]
     public async Task Integration_TranscribesAudio()
     {
         await using var provider = new WhisperSTTProvider();

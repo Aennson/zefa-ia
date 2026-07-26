@@ -1,3 +1,4 @@
+using Xunit;
 using ZefaIA.Persistence;
 
 namespace ZefaIA.Persistence.Tests;
@@ -30,7 +31,7 @@ public sealed class SqliteMeetingRepositoryTests : IAsyncLifetime, IAsyncDisposa
     #region Initialize
 
     [Fact]
-    public async Task InitializeAsync_CreatesDatabase()
+    public void InitializeAsync_CreatesDatabase()
     {
         Assert.True(File.Exists(_dbPath));
     }

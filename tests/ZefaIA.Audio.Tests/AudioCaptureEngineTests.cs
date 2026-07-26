@@ -73,12 +73,12 @@ public class AudioCaptureEngineTests
     }
 
     [Fact]
-    public void AddSource_WhileRunning_Throws()
+    public async Task AddSource_WhileRunning_Throws()
     {
         using var engine = new AudioCaptureEngine();
         var mic = CreateMockSource(AudioSourceType.Microphone);
         engine.AddSource(mic.Object);
-        engine.StartAsync().Wait();
+        await engine.StartAsync();
 
         var loopback = CreateMockSource(AudioSourceType.Loopback);
         Assert.Throws<InvalidOperationException>(() => engine.AddSource(loopback.Object));

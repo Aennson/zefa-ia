@@ -1,3 +1,4 @@
+using Xunit;
 using ZefaIA.Core;
 using ZefaIA.Core.Models;
 

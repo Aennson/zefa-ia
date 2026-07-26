@@ -1,3 +1,4 @@
+using Xunit;
 using ZefaIA.Core.Diagnostics;
 
 namespace ZefaIA.App.Tests;

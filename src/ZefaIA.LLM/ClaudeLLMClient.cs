@@ -18,7 +18,7 @@ public sealed class ClaudeLLMClient : ILLMClient
     private readonly TimeSpan _timeout;
     private bool _disposed;
 
-    private const string ApiBaseUrl = "https://api.anthropic.com/v1/messages";
+    internal const string ApiBaseUrl = "https://api.anthropic.com/v1/messages";
     private const string ApiVersion = "2023-06-01";
     private const string PromptCachingBeta = "prompt-caching-2024-07-31";
 
@@ -135,7 +135,7 @@ internal sealed class ClaudeLLMSession : ILLMSession
         {
             try
             {
-                var request = new HttpRequestMessage(HttpMethod.Post, ApiBaseUrl)
+                var request = new HttpRequestMessage(HttpMethod.Post, ClaudeLLMClient.ApiBaseUrl)
                 {
                     Content = new StringContent(json, Encoding.UTF8, "application/json")
                 };
@@ -254,6 +254,7 @@ internal sealed class ClaudeLLMSession : ILLMSession
 
     public ValueTask DisposeAsync()
     {
+        if (_disposed) return ValueTask.CompletedTask;
         _disposed = true;
         return ValueTask.CompletedTask;
     }

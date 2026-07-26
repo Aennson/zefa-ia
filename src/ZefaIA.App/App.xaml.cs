@@ -6,7 +6,9 @@ using ZefaIA.Persistence;
 
 namespace ZefaIA.App;
 
-public partial class App : Application
+// Fully qualified: UseWindowsForms adds a global using for System.Windows.Forms,
+// which makes the bare name `Application` ambiguous with System.Windows.Application.
+public partial class App : System.Windows.Application
 {
     private ILoggerFactory? _loggerFactory;
     private AppServices? _services;
@@ -57,11 +59,11 @@ public partial class App : Application
         catch (Exception ex)
         {
             logger.LogCritical(ex, "Startup failed");
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 $"Falha ao iniciar o Zefa IA:\n\n{ex.Message}",
                 "Erro de inicializacao",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Error);
             Shutdown(1);
         }
     }
@@ -103,13 +105,13 @@ public partial class App : Application
         // component's own recovery.
         if (source != "UI") return;
 
-        MessageBox.Show(
+        System.Windows.MessageBox.Show(
             path == null
                 ? $"Ocorreu um erro inesperado:\n\n{exception.Message}"
                 : $"Ocorreu um erro inesperado:\n\n{exception.Message}\n\nDetalhes salvos em:\n{path}",
             "Zefa IA - Erro",
-            MessageBoxButton.OK,
-            MessageBoxImage.Error);
+            System.Windows.MessageBoxButton.OK,
+            System.Windows.MessageBoxImage.Error);
     }
 
     private async void OnNewMeetingRequested()
@@ -136,11 +138,11 @@ public partial class App : Application
         }
         catch (Exception ex)
         {
-            MessageBox.Show(
+            System.Windows.MessageBox.Show(
                 $"Nao foi possivel iniciar a reuniao:\n\n{ex.Message}",
                 "Erro",
-                MessageBoxButton.OK,
-                MessageBoxImage.Error);
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Error);
         }
     }
 

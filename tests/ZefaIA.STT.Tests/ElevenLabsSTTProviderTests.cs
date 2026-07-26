@@ -173,7 +173,7 @@ public class ElevenLabsSTTProviderTests
             () => provider.ProcessAudioAsync(chunk));
     }
 
-    [Fact(Skip = "Requires ElevenLabs API key - run manually")]
+    [OptInFact("ZEFA_RUN_ELEVENLABS_INTEGRATION", "Requires a paid ELEVENLABS_API_KEY")]
     public async Task Integration_ConnectsAndTranscribes()
     {
         await using var provider = new ElevenLabsSTTProvider();

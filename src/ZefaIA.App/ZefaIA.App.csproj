@@ -5,9 +5,14 @@
     <UseWPF>true</UseWPF>
     <!-- The tray icon uses WinForms NotifyIcon; WPF has no equivalent. -->
     <UseWindowsForms>true</UseWindowsForms>
+    <!-- Required by [LibraryImport] source generator (P/Invoke in TrayIconController.cs) -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="ZefaIA.App.Tests" />
+    <InternalsVisibleTo Include="ZefaIA.Integration.Tests" />
+    <!-- UseWPF/UseWindowsForms replace the default implicit-using set, which drops System.IO. -->
+    <Using Include="System.IO" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />

@@ -52,7 +52,7 @@ public class MicrophoneSourceTests
         }
     }
 
-    [Fact(Skip = "Requires Windows audio device")]
+    [RequiresAudioDeviceFact(AudioEndpoint.Capture)]
     public async Task StartAsync_RaisesStateChangedToCapturing()
     {
         var source = new MicrophoneSource();
@@ -68,7 +68,7 @@ public class MicrophoneSourceTests
         source.Dispose();
     }
 
-    [Fact(Skip = "Requires Windows audio device")]
+    [RequiresAudioDeviceFact(AudioEndpoint.Capture)]
     public async Task StartAsync_EmitsAudioChunks()
     {
         var source = new MicrophoneSource();

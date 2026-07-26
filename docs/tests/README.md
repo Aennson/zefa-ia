@@ -29,17 +29,32 @@ docs/tests/
 - Testes marcados com `Skip` indicam dependencia de hardware (Windows audio device)
 - Framework: **xUnit** com **Moq** para mocking
 
+## Ultima execucao real
+
+Ver [`WINDOWS-TEST-RUN.md`](WINDOWS-TEST-RUN.md) — primeira execucao em Windows real
+(2026-07-26): **454 passando, 0 falhando, 3 opt-in**. Documenta os 22 defeitos
+encontrados e corrigidos, incluindo os de produto (lock do SQLite, perda de
+`DateTimeKind`, vazamento do marcador `[SEM SUGESTAO]`, instalador sem checagem do
+VC++ Redistributable).
+
+## Pre-requisitos
+
+```powershell
+winget install Microsoft.DotNet.SDK.8
+winget install Microsoft.VCRedist.2015+.x64   # obrigatorio para o Whisper nativo
+```
+
 ## Como Executar
 
-```bash
+```powershell
 # Todos os testes
 dotnet test
 
 # Testes de um projeto especifico
 dotnet test tests/ZefaIA.Audio.Tests
 
-# Testes excluindo os que precisam de hardware
-dotnet test --filter "Category!=RequiresHardware"
+# Incluindo o teste de integracao do Whisper (baixa ~150 MB na primeira vez)
+$env:ZEFA_RUN_WHISPER_INTEGRATION = "1"; dotnet test tests/ZefaIA.STT.Tests
 ```
 
 ## Categorias de Teste
@@ -48,5 +63,16 @@ dotnet test --filter "Category!=RequiresHardware"
 |------|-----------|----------|
 | **Unit** | Testa logica isolada com mocks | Qualquer (CI/local) |
 | **Integration** | Testa interacao entre componentes reais | Qualquer (CI/local) |
-| **Hardware** | Requer dispositivos de audio Windows | Apenas local com hardware |
-| **Manual** | Verificacao humana (ouvir WAV, ver overlay) | Apenas local |
+| **Hardware** | Requer dispositivos de audio Windows | Roda onde ha hardware; pula sozinho onde nao ha |
+| **Opt-in** | Precisa de download grande ou chave de API paga | Ligado por variavel de ambiente |
+
+### Como o skip funciona
+
+Nao ha mais `Skip` fixo (que tornava o teste codigo morto). Dois atributos decidem
+em runtime:
+
+- `[RequiresAudioDeviceFact]` (`ZefaIA.Audio.Tests`) — sonda os endpoints WASAPI.
+  Executa numa maquina com microfone/alto-falante, pula com motivo numa sem.
+  Aceita `AudioEndpoint.Capture` / `AudioEndpoint.Render` para exigir so um lado.
+- `[OptInFact("VAR", "motivo")]` (`ZefaIA.STT.Tests`) — executa quando a variavel de
+  ambiente esta em `1`/`true`; caso contrario pula informando como liga-la.

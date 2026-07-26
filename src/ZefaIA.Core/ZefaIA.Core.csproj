@@ -1,6 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <RootNamespace>ZefaIA.Core</RootNamespace>
+    <!-- Required by [LibraryImport] source generator (P/Invoke in Triggers/HotkeyTrigger.cs) -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Trigger internals (CalculateRMS, OnAudioChunk) are unit-tested directly. -->
+    <InternalsVisibleTo Include="ZefaIA.LLM.Tests" />
+    <InternalsVisibleTo Include="ZefaIA.App.Tests" />
+    <InternalsVisibleTo Include="ZefaIA.Audio.Tests" />
+    <InternalsVisibleTo Include="ZefaIA.STT.Tests" />
+    <InternalsVisibleTo Include="ZefaIA.Integration.Tests" />
+  </ItemGroup>
+  <PropertyGroup>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="System.Reactive" Version="6.0.1" />

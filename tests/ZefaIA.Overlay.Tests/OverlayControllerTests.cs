@@ -4,7 +4,7 @@ namespace ZefaIA.Overlay.Tests;
 
 public class OverlayControllerTests
 {
-    [Fact]
+    [WpfFact]
     public void Constructor_CreatesWindowWithDefaultSettings()
     {
         var controller = new OverlayController();
@@ -14,7 +14,7 @@ public class OverlayControllerTests
         Assert.Equal(OverlayPosition.BottomRight, controller.Window.Settings.Position);
     }
 
-    [Fact]
+    [WpfFact]
     public void Constructor_AppliesCustomSettings()
     {
         var settings = new OverlaySettings
@@ -32,7 +32,7 @@ public class OverlayControllerTests
         Assert.Equal(OverlayPosition.TopLeft, controller.Window.Settings.Position);
     }
 
-    [Fact]
+    [WpfFact]
     public void SetSpeakerNames_UpdatesNames()
     {
         var controller = new OverlayController();
@@ -40,7 +40,7 @@ public class OverlayControllerTests
         // Names stored internally; verified through transcription display
     }
 
-    [Fact]
+    [WpfFact]
     public void Dispose_MultipleCallsDoNotThrow()
     {
         var controller = new OverlayController();

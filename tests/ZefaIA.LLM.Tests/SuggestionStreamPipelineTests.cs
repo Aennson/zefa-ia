@@ -167,6 +167,9 @@ public class SuggestionStreamPipelineTests
     {
         await Task.Yield();
         throw new HttpRequestException(message);
+        // Unreachable, but required for the compiler to treat this as an iterator.
+#pragma warning disable CS0162
         yield break;
+#pragma warning restore CS0162
     }
 }

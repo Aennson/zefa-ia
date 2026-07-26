@@ -60,6 +60,7 @@ public sealed class SuggestionStreamPipeline : IDisposable
             OnThinkingStarted?.Invoke();
 
             var fullText = new System.Text.StringBuilder();
+            var emittedChars = 0;
 
             await foreach (var token in session.GetSuggestionStreamAsync(recentTranscript, context, linkedCt))
             {
@@ -67,16 +68,34 @@ public sealed class SuggestionStreamPipeline : IDisposable
                     SetState(SuggestionState.Streaming);
 
                 fullText.Append(token);
+                var text = fullText.ToString();
 
-                if (IsNoSuggestion(fullText.ToString()))
+                if (IsNoSuggestion(text))
                 {
                     SetState(SuggestionState.Complete);
                     OnComplete?.Invoke();
                     return;
                 }
 
-                OnTokenReceived?.Invoke(token);
+                // The marker arrives split across tokens ("[SEM", " SUGESTAO]"), so
+                // forwarding each token as it lands flashes "[SEM" on the overlay before
+                // the pipeline can tell it is a no-suggestion. Hold output back while the
+                // text is still a possible prefix of the marker, then flush what's owed.
+                if (IsPossibleNoSuggestionPrefix(text))
+                    continue;
+
+                if (emittedChars < text.Length)
+                {
+                    OnTokenReceived?.Invoke(text[emittedChars..]);
+                    emittedChars = text.Length;
+                }
             }
+
+            // The stream can end mid-prefix (e.g. a reply that is literally "[SEM"),
+            // which is not the marker and must still reach the UI.
+            var finalText = fullText.ToString();
+            if (emittedChars < finalText.Length)
+                OnTokenReceived?.Invoke(finalText[emittedChars..]);
 
             SetState(SuggestionState.Complete);
             OnComplete?.Invoke();
@@ -107,6 +126,16 @@ public sealed class SuggestionStreamPipeline : IDisposable
         var trimmed = text.Trim();
         return trimmed.Equals(NoSuggestionMarker, StringComparison.OrdinalIgnoreCase) ||
                trimmed.StartsWith(NoSuggestionMarker, StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// True while <paramref name="text"/> could still grow into the no-suggestion marker.
+    /// </summary>
+    internal static bool IsPossibleNoSuggestionPrefix(string text)
+    {
+        var trimmed = text.TrimStart();
+        return trimmed.Length < NoSuggestionMarker.Length &&
+               NoSuggestionMarker.StartsWith(trimmed, StringComparison.OrdinalIgnoreCase);
     }
 
     private void SetState(SuggestionState newState)

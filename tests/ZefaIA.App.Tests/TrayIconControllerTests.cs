@@ -1,3 +1,4 @@
+using Xunit;
 using System.Drawing;
 
 namespace ZefaIA.App.Tests;

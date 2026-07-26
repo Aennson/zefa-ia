@@ -7,7 +7,7 @@ namespace ZefaIA.Overlay.Tests;
 
 public class SimpleMarkdownParserTests
 {
-    [Fact]
+    [WpfFact]
     public void Parse_PlainText_CreatesTextBlock()
     {
         var result = SimpleMarkdownParser.Parse("Hello world");
@@ -16,7 +16,7 @@ public class SimpleMarkdownParserTests
         Assert.Equal(TextWrapping.Wrap, result.TextWrapping);
     }
 
-    [Fact]
+    [WpfFact]
     public void Parse_BoldText_CreatesBoldRun()
     {
         var result = SimpleMarkdownParser.Parse("This is **bold** text");
@@ -28,7 +28,7 @@ public class SimpleMarkdownParserTests
         Assert.Equal(FontWeights.Bold, boldRun.FontWeight);
     }
 
-    [Fact]
+    [WpfFact]
     public void Parse_ItalicText_CreatesItalicRun()
     {
         var result = SimpleMarkdownParser.Parse("This is *italic* text");
@@ -38,7 +38,7 @@ public class SimpleMarkdownParserTests
         Assert.Equal(FontStyles.Italic, italicRun.FontStyle);
     }
 
-    [Fact]
+    [WpfFact]
     public void Parse_BulletList_AddsBulletPrefix()
     {
         var result = SimpleMarkdownParser.Parse("- Item one\n- Item two");
@@ -49,7 +49,7 @@ public class SimpleMarkdownParserTests
         Assert.Contains("Item two", text);
     }
 
-    [Fact]
+    [WpfFact]
     public void Parse_Multiline_AddsLineBreaks()
     {
         var result = SimpleMarkdownParser.Parse("Line one\nLine two");
@@ -58,7 +58,7 @@ public class SimpleMarkdownParserTests
         Assert.Single(lineBreaks);
     }
 
-    [Fact]
+    [WpfFact]
     public void Parse_EmptyString_ReturnsEmptyTextBlock()
     {
         var result = SimpleMarkdownParser.Parse("");
@@ -66,7 +66,7 @@ public class SimpleMarkdownParserTests
         Assert.NotNull(result);
     }
 
-    [Fact]
+    [WpfFact]
     public void Parse_CustomFontSize_Applied()
     {
         var result = SimpleMarkdownParser.Parse("Text", fontSize: 20);

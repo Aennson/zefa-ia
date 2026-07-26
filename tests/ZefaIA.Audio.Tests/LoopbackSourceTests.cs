@@ -1,3 +1,5 @@
+using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 using Xunit;
 using ZefaIA.Core.Models;
 using ZefaIA.Audio;
@@ -40,7 +42,7 @@ public class LoopbackSourceTests
         source.Dispose();
     }
 
-    [Fact(Skip = "Requires Windows audio device")]
+    [RequiresAudioDeviceFact(AudioEndpoint.Render)]
     public async Task StartAsync_RaisesStateChangedToCapturing()
     {
         var source = new LoopbackSource();
@@ -56,15 +58,28 @@ public class LoopbackSourceTests
         source.Dispose();
     }
 
-    [Fact(Skip = "Requires Windows audio device with active output")]
+    [RequiresAudioDeviceFact(AudioEndpoint.Render)]
     public async Task StartAsync_EmitsAudioChunks_WhenAudioPlaying()
     {
         var source = new LoopbackSource();
         var chunks = new List<AudioChunkEventArgs>();
         source.AudioChunkReceived += (_, e) => chunks.Add(e);
 
+        // WASAPI loopback delivers nothing while the render endpoint is idle, so the
+        // test has to produce the audio it claims to capture. A quiet sine tone through
+        // the default output device is enough to make the endpoint active.
+        using var tone = new WaveOutEvent();
+        tone.Init(new SignalGenerator(44100, 2)
+        {
+            Gain = 0.05,
+            Frequency = 440,
+            Type = SignalGeneratorType.Sin
+        });
+
         await source.StartAsync();
+        tone.Play();
         await Task.Delay(1000);
+        tone.Stop();
         await source.StopAsync();
 
         Assert.NotEmpty(chunks);

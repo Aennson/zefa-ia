@@ -1,3 +1,4 @@
+using Xunit;
 using ZefaIA.Core.Resilience;
 
 namespace ZefaIA.App.Tests;

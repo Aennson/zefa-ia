@@ -6,8 +6,8 @@ namespace ZefaIA.STT;
 
 public sealed class WhisperSTTProvider : ISTTProvider
 {
-    private WhisperNet.WhisperProcessor? _processor;
-    private WhisperNet.WhisperFactory? _factory;
+    private Whisper.net.WhisperProcessor? _processor;
+    private Whisper.net.WhisperFactory? _factory;
     private readonly ConcurrentQueue<byte[]> _audioBuffer = new();
     private int _bufferedBytes;
     private int _bufferThresholdBytes;
@@ -28,7 +28,12 @@ public sealed class WhisperSTTProvider : ISTTProvider
     public IReadOnlyList<string> SupportedLanguages => new[] { "auto", "pt", "en", "es", "fr", "de", "it", "ja", "zh" };
 
     public event EventHandler<TranscriptionSegmentEventArgs>? SegmentReceived;
+
+    // Whisper.net emits only finalized segments for a completed audio buffer, so this
+    // provider never raises PartialReceived. It stays on the type to satisfy ISTTProvider.
+#pragma warning disable CS0067
     public event EventHandler<TranscriptionSegmentEventArgs>? PartialReceived;
+#pragma warning restore CS0067
 
     public async Task InitializeAsync(STTProviderConfig config, CancellationToken ct = default)
     {
@@ -46,15 +51,30 @@ public sealed class WhisperSTTProvider : ISTTProvider
 
         var modelFile = await EnsureModelAsync(modelPath, modelSize, ct);
 
-        _factory = WhisperNet.WhisperFactory.FromPath(modelFile);
+        // GPU selection is a process-wide runtime setting in Whisper.net; there is no
+        // per-builder toggle. It must be set before the factory loads the native library.
+        Whisper.net.LibraryLoader.RuntimeOptions.Instance.SetUseGpu(useGpu);
+
+        try
+        {
+            _factory = Whisper.net.WhisperFactory.FromPath(modelFile);
+        }
+        catch (Exception ex) when (ex.Message.Contains("native whisper library", StringComparison.OrdinalIgnoreCase))
+        {
+            // whisper.dll links against the MSVC runtime. On a machine without the VC++
+            // redistributable it fails to load with Win32 error 126, and Whisper.net's
+            // own message ("Cannot load the library on this platform") sends people
+            // looking for an architecture problem that isn't there.
+            throw new InvalidOperationException(
+                "Nao foi possivel carregar o motor Whisper. Instale o Microsoft Visual C++ " +
+                "2015-2022 Redistributable (x64): winget install Microsoft.VCRedist.2015+.x64 " +
+                "ou https://aka.ms/vs/17/release/vc_redist.x64.exe", ex);
+        }
 
         var builder = _factory.CreateBuilder()
             .WithLanguage(config.Language == "auto" ? "auto" : config.Language ?? "auto")
             .WithNoSpeechThreshold(NoSpeechThreshold)
             .WithThreads(Math.Max(1, Environment.ProcessorCount / 2));
-
-        if (!useGpu)
-            builder.WithNoGPU();
 
         _processor = builder.Build();
         _initialized = true;
@@ -201,18 +221,18 @@ public sealed class WhisperSTTProvider : ISTTProvider
         if (File.Exists(modelFile))
             return modelFile;
 
-        using var downloader = new WhisperNet.Ggml.WhisperGgmlDownloader();
         var modelType = modelSize switch
         {
-            "tiny" => WhisperNet.Ggml.GgmlType.Tiny,
-            "base" => WhisperNet.Ggml.GgmlType.Base,
-            "small" => WhisperNet.Ggml.GgmlType.Small,
-            "medium" => WhisperNet.Ggml.GgmlType.Medium,
-            "large" => WhisperNet.Ggml.GgmlType.LargeV3,
-            _ => WhisperNet.Ggml.GgmlType.Base
+            "tiny" => Whisper.net.Ggml.GgmlType.Tiny,
+            "base" => Whisper.net.Ggml.GgmlType.Base,
+            "small" => Whisper.net.Ggml.GgmlType.Small,
+            "medium" => Whisper.net.Ggml.GgmlType.Medium,
+            "large" => Whisper.net.Ggml.GgmlType.LargeV3,
+            _ => Whisper.net.Ggml.GgmlType.Base
         };
 
-        using var modelStream = await downloader.GetGgmlModelAsync(modelType, ct);
+        using var modelStream = await Whisper.net.Ggml.WhisperGgmlDownloader
+            .GetGgmlModelAsync(modelType, cancellationToken: ct);
         using var fileStream = File.Create(modelFile);
         await modelStream.CopyToAsync(fileStream, ct);
 
