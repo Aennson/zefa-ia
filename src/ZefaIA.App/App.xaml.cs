@@ -12,6 +12,7 @@ public partial class App : Application
     private AppServices? _services;
     private MeetingOrchestrator? _orchestrator;
     private TrayIconController? _tray;
+    private readonly CrashReporter _crashReporter = new();
     private bool _shutdownStarted;
 
     internal AppServices? Services => _services;
@@ -20,6 +21,8 @@ public partial class App : Application
     protected override async void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        InstallGlobalExceptionHandlers();
 
         var configuration = new ConfigurationBuilder()
             .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
@@ -61,6 +64,52 @@ public partial class App : Application
                 MessageBoxImage.Error);
             Shutdown(1);
         }
+    }
+
+    /// <summary>
+    /// Catches everything the three .NET exception channels can surface. A crash
+    /// during a meeting must not take the app down without the transcription being
+    /// flushed, so UI-thread exceptions are reported and swallowed rather than
+    /// allowed to terminate the process.
+    /// </summary>
+    private void InstallGlobalExceptionHandlers()
+    {
+        DispatcherUnhandledException += (_, args) =>
+        {
+            HandleCrash(args.Exception, "UI");
+            args.Handled = true;
+        };
+
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
+            if (args.ExceptionObject is Exception ex)
+                HandleCrash(ex, "AppDomain");
+        };
+
+        TaskScheduler.UnobservedTaskException += (_, args) =>
+        {
+            HandleCrash(args.Exception, "Task");
+            args.SetObserved();
+        };
+    }
+
+    private void HandleCrash(Exception exception, string source)
+    {
+        var path = _crashReporter.Report(exception, source);
+        _loggerFactory?.CreateLogger<App>().LogError(exception, "Unhandled exception from {Source}", source);
+
+        // Only interrupt the user for failures that leave the app unusable; a
+        // background task blowing up mid-meeting is logged and left to the
+        // component's own recovery.
+        if (source != "UI") return;
+
+        MessageBox.Show(
+            path == null
+                ? $"Ocorreu um erro inesperado:\n\n{exception.Message}"
+                : $"Ocorreu um erro inesperado:\n\n{exception.Message}\n\nDetalhes salvos em:\n{path}",
+            "Zefa IA - Erro",
+            MessageBoxButton.OK,
+            MessageBoxImage.Error);
     }
 
     private async void OnNewMeetingRequested()
