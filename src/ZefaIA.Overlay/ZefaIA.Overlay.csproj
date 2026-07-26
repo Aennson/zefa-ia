@@ -5,5 +5,6 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\ZefaIA.Core\ZefaIA.Core.csproj" />
+    <ProjectReference Include="..\ZefaIA.Persistence\ZefaIA.Persistence.csproj" />
   </ItemGroup>
 </Project>

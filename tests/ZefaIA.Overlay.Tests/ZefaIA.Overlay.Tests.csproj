@@ -11,5 +11,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\ZefaIA.Overlay\ZefaIA.Overlay.csproj" />
     <ProjectReference Include="..\..\src\ZefaIA.Core\ZefaIA.Core.csproj" />
+    <ProjectReference Include="..\..\src\ZefaIA.Persistence\ZefaIA.Persistence.csproj" />
   </ItemGroup>
 </Project>
