@@ -35,3 +35,6 @@ models/
 appsettings.*.json
 !appsettings.json
 !appsettings.Development.json
+
+# Installer output
+installer/output/
