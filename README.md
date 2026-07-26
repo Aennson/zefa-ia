@@ -46,7 +46,7 @@ cd zefa-ia
 # Compilar
 dotnet build
 
-# Rodar testes (140+ testes, os de hardware sao Skip automaticamente)
+# Rodar testes (200+ testes, os de hardware sao Skip automaticamente)
 dotnet test
 
 # Executar
@@ -159,7 +159,7 @@ Altere `STT.ActiveProvider` para `"WhisperLocal"` ou `"ElevenLabs"`. O hot-swap 
 | 1 | Captura de Audio | Concluido |
 | 2 | Speech-to-Text | Concluido |
 | 3 | Overlay WPF | Concluido |
-| 4 | Integracao LLM | Pendente |
+| 4 | Integracao LLM | Concluido |
 | 5 | Persistencia e Config | Pendente |
 | 6 | Integracao e Polish | Pendente |
 
@@ -173,7 +173,7 @@ Whisper local via whisper.net com buffer de audio e VAD, ElevenLabs via WebSocke
 Janela topmost click-through com `WS_EX_TRANSPARENT`/`WS_EX_LAYERED`, excluida de captura via `SetWindowDisplayAffinity`, mini controles (copiar, fixar, dispensar) com hit-testing seletivo, display de transcricao live com ObservableCollection, area de sugestoes com streaming de markdown, SimpleMarkdownParser (bold/italic/listas → WPF Inlines), Settings UI completa (STT, perfil, overlay), AppSettings com persistencia JSON.
 
 ### Sprint 4 — Integracao LLM
-Claude API com prompt caching, triggers por silencio e hotkey, streaming de sugestoes para o overlay.
+ClaudeLLMClient com SSE streaming e prompt caching (`cache_control` ephemeral), retry com backoff em 429/500, PromptBuilder com perfil do usuario e contexto de reuniao, SilenceTrigger com deteccao RMS e cooldown, HotkeyTrigger global via Win32 `RegisterHotKey`, SuggestionStreamPipeline com maquina de estados e filtragem de `[SEM SUGESTAO]`, SuggestionOrchestrator com rate limiting e deduplicacao.
 
 ### Sprint 5 — Persistencia e Config
 SQLite para sessoes de reuniao, editor de perfil, contexto de reuniao, UI de configuracoes.
@@ -202,8 +202,8 @@ Testes que requerem hardware de audio ou API keys sao marcados com `[Fact(Skip =
 | ZefaIA.Audio.Tests | 49 | Resampler, captura, AEC, pipeline, WAV |
 | ZefaIA.STT.Tests | 62 | Factory, Whisper, ElevenLabs, engine, timeline, config |
 | ZefaIA.Overlay.Tests | 30 | Models, NativeMethods, controller, markdown parser, AppSettings |
-| ZefaIA.LLM.Tests | 3 | Models e defaults |
-| **Total** | **140+** | |
+| ZefaIA.LLM.Tests | 69 | Claude client, prompt builder, triggers, pipeline, orchestrator |
+| **Total** | **210+** | |
 
 ## Decisoes Tecnicas
 
