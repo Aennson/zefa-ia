@@ -136,6 +136,49 @@ public partial class MeetingHistoryWindow : Window
         PnlDetail.Children.Add(border);
     }
 
+    private void BtnExportTxt_Click(object sender, RoutedEventArgs e) => Export(ExportFormat.Text);
+
+    private void BtnExportJson_Click(object sender, RoutedEventArgs e) => Export(ExportFormat.Json);
+
+    private async void Export(ExportFormat format)
+    {
+        if (LstSessions.SelectedItem is not SessionListItem item) return;
+
+        var session = _allSessions.FirstOrDefault(s => s.Id == item.SessionId);
+        if (session == null) return;
+
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            FileName = SessionExporter.SuggestFileName(session, format),
+            Filter = format == ExportFormat.Json
+                ? "Arquivo JSON (*.json)|*.json"
+                : "Arquivo de texto (*.txt)|*.txt",
+            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)
+        };
+
+        if (dialog.ShowDialog() != true) return;
+
+        try
+        {
+            var exporter = new SessionExporter(_repository);
+            await exporter.ExportToFileAsync(item.SessionId, dialog.FileName, format);
+
+            MessageBox.Show(
+                $"Reuniao exportada para:\n{dialog.FileName}",
+                "Exportacao concluida",
+                MessageBoxButton.OK,
+                MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(
+                $"Falha ao exportar: {ex.Message}",
+                "Erro na exportacao",
+                MessageBoxButton.OK,
+                MessageBoxImage.Error);
+        }
+    }
+
     private async void BtnDelete_Click(object sender, RoutedEventArgs e)
     {
         if (LstSessions.SelectedItem is not SessionListItem item) return;

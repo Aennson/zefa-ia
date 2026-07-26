@@ -37,6 +37,17 @@
                     Background="#DC2626" Foreground="White"
                     Click="BtnDelete_Click"/>
 
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
+                <Button x:Name="BtnExportTxt" Content="Exportar TXT"
+                        Width="115" Height="28" Margin="0,0,6,0"
+                        Background="#2D2D44" Foreground="#CCFFFFFF"
+                        Click="BtnExportTxt_Click"/>
+                <Button x:Name="BtnExportJson" Content="Exportar JSON"
+                        Width="115" Height="28"
+                        Background="#2D2D44" Foreground="#CCFFFFFF"
+                        Click="BtnExportJson_Click"/>
+            </StackPanel>
+
             <ListBox x:Name="LstSessions"
                      Background="#12122A" Foreground="#CCFFFFFF"
                      BorderBrush="#333355"
