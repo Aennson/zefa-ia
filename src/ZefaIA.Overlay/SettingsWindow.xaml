@@ -2,150 +2,178 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Zefa IA - Configuracoes"
-        Width="480" Height="560"
+        Width="580"
+        MinHeight="600" MaxHeight="860"
+        SizeToContent="Height"
         WindowStartupLocation="CenterScreen"
-        Background="#1A1A2E"
-        ResizeMode="NoResize">
+        WindowStyle="None" ResizeMode="NoResize"
+        AllowsTransparency="True" Background="Transparent"
+        FontFamily="{DynamicResource AppFont}">
 
     <Window.Resources>
-        <Style TargetType="TextBlock" x:Key="SectionHeader">
-            <Setter Property="Foreground" Value="#A78BFA"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,12,0,8"/>
-        </Style>
-        <Style TargetType="TextBlock" x:Key="FieldLabel">
-            <Setter Property="Foreground" Value="#CCFFFFFF"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Margin" Value="0,4,0,2"/>
-        </Style>
-        <Style TargetType="ComboBox" x:Key="SettingsCombo">
-            <Setter Property="Margin" Value="0,2,0,6"/>
-            <Setter Property="Height" Value="28"/>
-        </Style>
-        <Style TargetType="TextBox" x:Key="SettingsTextBox">
-            <Setter Property="Margin" Value="0,2,0,6"/>
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Padding" Value="4,2"/>
-        </Style>
-        <Style TargetType="CheckBox" x:Key="SettingsCheck">
-            <Setter Property="Foreground" Value="#CCFFFFFF"/>
-            <Setter Property="Margin" Value="0,4,0,6"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ZefaIA.Overlay;component/Themes/ZefaTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
 
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <Border Background="{StaticResource BgLayerBrush}" CornerRadius="16"
+            BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" ShadowDepth="8" Opacity="0.55" Color="Black" />
+        </Border.Effect>
 
-        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-            <StackPanel>
-                <!-- STT Provider -->
-                <TextBlock Text="Provedor de STT" Style="{StaticResource SectionHeader}"/>
+        <Grid Margin="28">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-                <TextBlock Text="Provedor ativo" Style="{StaticResource FieldLabel}"/>
-                <ComboBox x:Name="CmbProvider" Style="{StaticResource SettingsCombo}">
-                    <ComboBoxItem Content="Whisper Local"/>
-                    <ComboBoxItem Content="ElevenLabs"/>
-                </ComboBox>
+            <Grid Grid.Row="0" Margin="0,0,0,4" Background="Transparent"
+                  MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="42" Height="42" CornerRadius="11"
+                            Background="{StaticResource AccentGradientBrush}" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE713;" Style="{StaticResource Glyph}"
+                                   FontSize="20" Foreground="White" />
+                    </Border>
+                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Configuracoes" Style="{StaticResource H1}" />
+                        <TextBlock Text="Aplicado na proxima reuniao, exceto o overlay"
+                                   Style="{StaticResource Caption}" Margin="0,2,0,0" />
+                    </StackPanel>
+                </StackPanel>
+                <Button Style="{StaticResource IconButton}" Content="&#xE711;"
+                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Click="BtnCancel_Click" ToolTip="Fechar" />
+            </Grid>
 
-                <TextBlock Text="Modelo Whisper" Style="{StaticResource FieldLabel}"/>
-                <ComboBox x:Name="CmbModelSize" Style="{StaticResource SettingsCombo}">
-                    <ComboBoxItem Content="tiny"/>
-                    <ComboBoxItem Content="base"/>
-                    <ComboBoxItem Content="small"/>
-                    <ComboBoxItem Content="medium"/>
-                </ComboBox>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled" Padding="0,0,6,0">
+                <StackPanel>
 
-                <TextBlock Text="Idioma" Style="{StaticResource FieldLabel}"/>
-                <ComboBox x:Name="CmbLanguage" Style="{StaticResource SettingsCombo}">
-                    <ComboBoxItem Content="auto"/>
-                    <ComboBoxItem Content="pt"/>
-                    <ComboBoxItem Content="en"/>
-                    <ComboBoxItem Content="es"/>
-                    <ComboBoxItem Content="fr"/>
-                </ComboBox>
+                    <TextBlock Text="TRANSCRICAO" Style="{StaticResource SectionHeader}" Margin="0,12,0,2" />
 
-                <CheckBox x:Name="ChkGpu" Content="Usar GPU (CUDA)" Style="{StaticResource SettingsCheck}"/>
+                    <TextBlock Text="PROVEDOR" Style="{StaticResource FieldLabel}" Margin="2,12,0,6" />
+                    <ComboBox x:Name="CmbProvider" Style="{StaticResource AppComboBox}"
+                              ItemContainerStyle="{StaticResource AppComboItem}">
+                        <ComboBoxItem Content="Whisper Local" />
+                        <ComboBoxItem Content="ElevenLabs" />
+                    </ComboBox>
 
-                <!-- Profile -->
-                <TextBlock Text="Perfil do Usuario" Style="{StaticResource SectionHeader}"/>
+                    <TextBlock Text="MODELO WHISPER" Style="{StaticResource FieldLabel}" />
+                    <ComboBox x:Name="CmbModelSize" Style="{StaticResource AppComboBox}"
+                              ItemContainerStyle="{StaticResource AppComboItem}">
+                        <ComboBoxItem Content="tiny" />
+                        <ComboBoxItem Content="base" />
+                        <ComboBoxItem Content="small" />
+                        <ComboBoxItem Content="medium" />
+                    </ComboBox>
 
-                <TextBlock Text="Nome" Style="{StaticResource FieldLabel}"/>
-                <TextBox x:Name="TxtName" Style="{StaticResource SettingsTextBox}"/>
+                    <TextBlock Text="IDIOMA" Style="{StaticResource FieldLabel}" />
+                    <ComboBox x:Name="CmbLanguage" Style="{StaticResource AppComboBox}"
+                              ItemContainerStyle="{StaticResource AppComboItem}">
+                        <ComboBoxItem Content="auto" />
+                        <ComboBoxItem Content="pt" />
+                        <ComboBoxItem Content="en" />
+                        <ComboBoxItem Content="es" />
+                        <ComboBoxItem Content="fr" />
+                    </ComboBox>
 
-                <TextBlock Text="Cargo / Funcao" Style="{StaticResource FieldLabel}"/>
-                <TextBox x:Name="TxtRole" Style="{StaticResource SettingsTextBox}"/>
+                    <CheckBox x:Name="ChkGpu" Content="Usar GPU (CUDA)"
+                              Style="{StaticResource AppCheckBox}" Margin="2,18,0,0" />
 
-                <TextBlock Text="Area de expertise" Style="{StaticResource FieldLabel}"/>
-                <TextBox x:Name="TxtExpertise" Style="{StaticResource SettingsTextBox}"/>
+                    <TextBlock Text="PERFIL" Style="{StaticResource SectionHeader}" />
 
-                <TextBlock Text="Tom preferido" Style="{StaticResource FieldLabel}"/>
-                <ComboBox x:Name="CmbTone" Style="{StaticResource SettingsCombo}">
-                    <ComboBoxItem Content="Formal"/>
-                    <ComboBoxItem Content="Casual"/>
-                    <ComboBoxItem Content="Tecnico"/>
-                </ComboBox>
+                    <TextBlock Text="NOME" Style="{StaticResource FieldLabel}" Margin="2,12,0,6" />
+                    <TextBox x:Name="TxtName" Style="{StaticResource AppTextBox}" />
 
-                <TextBlock Text="Contexto adicional" Style="{StaticResource FieldLabel}"/>
-                <TextBox x:Name="TxtContext" Height="60" AcceptsReturn="True"
-                         TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                         Margin="0,2,0,6"/>
+                    <TextBlock Text="CARGO / FUNCAO" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="TxtRole" Style="{StaticResource AppTextBox}" />
 
-                <!-- Hotkeys -->
-                <TextBlock Text="Atalhos" Style="{StaticResource SectionHeader}"/>
+                    <TextBlock Text="AREA DE EXPERTISE" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="TxtExpertise" Style="{StaticResource AppTextBox}" />
 
-                <TextBlock Text="Pedir sugestao" Style="{StaticResource FieldLabel}"/>
-                <TextBox x:Name="TxtHotkeySuggestion" Style="{StaticResource SettingsTextBox}"
-                         Text="Ctrl+Shift+Space" IsReadOnly="True"/>
+                    <TextBlock Text="TOM PREFERIDO" Style="{StaticResource FieldLabel}" />
+                    <ComboBox x:Name="CmbTone" Style="{StaticResource AppComboBox}"
+                              ItemContainerStyle="{StaticResource AppComboItem}">
+                        <ComboBoxItem Content="Formal" />
+                        <ComboBoxItem Content="Casual" />
+                        <ComboBoxItem Content="Tecnico" />
+                    </ComboBox>
 
-                <TextBlock Text="Toggle overlay" Style="{StaticResource FieldLabel}"/>
-                <TextBox x:Name="TxtHotkeyToggle" Style="{StaticResource SettingsTextBox}"
-                         Text="Ctrl+Shift+Z" IsReadOnly="True"/>
+                    <TextBlock Text="CONTEXTO ADICIONAL" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="TxtContext" Style="{StaticResource AppTextBox}"
+                             Height="86" AcceptsReturn="True" TextWrapping="Wrap"
+                             VerticalContentAlignment="Top" Padding="14,10"
+                             VerticalScrollBarVisibility="Auto" />
 
-                <TextBlock Text="Copiar ultima sugestao" Style="{StaticResource FieldLabel}"/>
-                <TextBox x:Name="TxtHotkeyCopy" Style="{StaticResource SettingsTextBox}"
-                         Text="Ctrl+Shift+C" IsReadOnly="True"/>
+                    <TextBlock Text="ATALHOS" Style="{StaticResource SectionHeader}" />
 
-                <!-- Overlay -->
-                <TextBlock Text="Overlay" Style="{StaticResource SectionHeader}"/>
+                    <TextBlock Text="PEDIR SUGESTAO" Style="{StaticResource FieldLabel}" Margin="2,12,0,6" />
+                    <TextBox x:Name="TxtHotkeySuggestion" Style="{StaticResource AppTextBox}"
+                             Text="Ctrl+Shift+Space" IsReadOnly="True"
+                             ToolTip="Pede uma sugestao imediatamente, sem depender de silencio" />
 
-                <TextBlock Text="Opacidade" Style="{StaticResource FieldLabel}"/>
-                <Slider x:Name="SldOpacity" Minimum="0.3" Maximum="1.0" Value="0.85"
-                        TickFrequency="0.05" IsSnapToTickEnabled="True"
-                        Margin="0,2,0,6"/>
+                    <TextBlock Text="MOSTRAR / OCULTAR OVERLAY" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="TxtHotkeyToggle" Style="{StaticResource AppTextBox}"
+                             Text="Ctrl+Shift+Z" IsReadOnly="True" />
 
-                <TextBlock Text="Tamanho da fonte" Style="{StaticResource FieldLabel}"/>
-                <Slider x:Name="SldFontSize" Minimum="10" Maximum="24" Value="14"
-                        TickFrequency="1" IsSnapToTickEnabled="True"
-                        Margin="0,2,0,6"/>
+                    <TextBlock Text="COPIAR ULTIMA SUGESTAO" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="TxtHotkeyCopy" Style="{StaticResource AppTextBox}"
+                             Text="Ctrl+Shift+C" IsReadOnly="True" />
 
-                <TextBlock Text="Posicao" Style="{StaticResource FieldLabel}"/>
-                <ComboBox x:Name="CmbPosition" Style="{StaticResource SettingsCombo}">
-                    <ComboBoxItem Content="Inferior Direito"/>
-                    <ComboBoxItem Content="Inferior Esquerdo"/>
-                    <ComboBoxItem Content="Superior Direito"/>
-                    <ComboBoxItem Content="Superior Esquerdo"/>
-                    <ComboBoxItem Content="Centro"/>
-                </ComboBox>
+                    <TextBlock Text="OVERLAY" Style="{StaticResource SectionHeader}" />
 
-                <TextBlock Text="Auto-ocultar (segundos, 0 = nunca)" Style="{StaticResource FieldLabel}"/>
-                <TextBox x:Name="TxtAutoHide" Style="{StaticResource SettingsTextBox}" Text="30"/>
+                    <TextBlock Text="OPACIDADE" Style="{StaticResource FieldLabel}" Margin="2,12,0,6" />
+                    <Slider x:Name="SldOpacity" Style="{StaticResource AppSlider}"
+                            Minimum="0.3" Maximum="1.0" Value="0.85"
+                            TickFrequency="0.05" IsSnapToTickEnabled="True" />
 
-                <CheckBox x:Name="ChkExcludeCapture" Content="Ocultar de captura de tela"
-                          Style="{StaticResource SettingsCheck}" IsChecked="True"/>
-            </StackPanel>
-        </ScrollViewer>
+                    <TextBlock Text="TAMANHO DA FONTE" Style="{StaticResource FieldLabel}" />
+                    <Slider x:Name="SldFontSize" Style="{StaticResource AppSlider}"
+                            Minimum="10" Maximum="24" Value="14"
+                            TickFrequency="1" IsSnapToTickEnabled="True" />
 
-        <!-- Buttons -->
-        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="Cancelar" Width="90" Height="32" Margin="0,0,8,0"
-                    Click="BtnCancel_Click"/>
-            <Button Content="Salvar" Width="90" Height="32"
-                    Background="#7C3AED" Foreground="White"
-                    Click="BtnSave_Click"/>
-        </StackPanel>
-    </Grid>
+                    <TextBlock Text="POSICAO" Style="{StaticResource FieldLabel}" />
+                    <ComboBox x:Name="CmbPosition" Style="{StaticResource AppComboBox}"
+                              ItemContainerStyle="{StaticResource AppComboItem}">
+                        <ComboBoxItem Content="Inferior Direito" />
+                        <ComboBoxItem Content="Inferior Esquerdo" />
+                        <ComboBoxItem Content="Superior Direito" />
+                        <ComboBoxItem Content="Superior Esquerdo" />
+                        <ComboBoxItem Content="Centro" />
+                    </ComboBox>
+
+                    <TextBlock Text="AUTO-OCULTAR (SEGUNDOS, 0 = NUNCA)" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="TxtAutoHide" Style="{StaticResource AppTextBox}" Text="30" />
+
+                    <CheckBox x:Name="ChkExcludeCapture" Content="Ocultar de captura de tela"
+                              Style="{StaticResource AppCheckBox}" IsChecked="True" Margin="2,18,0,0"
+                              ToolTip="Invisivel em compartilhamento de tela e prints" />
+                </StackPanel>
+            </ScrollViewer>
+
+            <Grid Grid.Row="2" Margin="0,24,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0" Style="{StaticResource SecondaryButton}" Content="Cancelar"
+                        HorizontalAlignment="Left" Width="120" Click="BtnCancel_Click" />
+
+                <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Width="150"
+                        Click="BtnSave_Click" IsDefault="True">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE74E;" FontFamily="{StaticResource IconFont}" FontSize="15"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="Salvar" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Grid>
+    </Border>
 </Window>

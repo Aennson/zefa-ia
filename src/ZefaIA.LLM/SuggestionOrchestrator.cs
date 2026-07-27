@@ -67,7 +67,10 @@ public sealed class SuggestionOrchestrator : IDisposable
             return;
         }
 
-        if (IsDuplicate(transcript))
+        // Deduplication exists to stop automatic triggers re-asking about a conversation
+        // that has not moved on. A hotkey press is the user explicitly asking again, so
+        // honour it — otherwise pressing the shortcut twice looks like a broken feature.
+        if (args.Reason != TriggerReason.Hotkey && IsDuplicate(transcript))
         {
             _logger.LogDebug("Duplicate transcript, skipping");
             Metrics.DeduplicatedCount++;

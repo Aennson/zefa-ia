@@ -69,8 +69,14 @@ public static class AppBootstrapper
         });
         logger.LogInformation("Overlay initialized (hidden)");
 
+        // 8. Message-only window for the global suggestion hotkey. Created once for the
+        // app's lifetime so the registration survives across meetings.
+        var hotkeyHost = new Win32HotkeyHost();
+        logger.LogInformation("Hotkey host ready (suggestion: {Hotkey})", settings.HotkeySuggestion);
+
         return new AppServices
         {
+            HotkeyHost = hotkeyHost,
             LoggerFactory = loggerFactory,
             Settings = settings,
             SttSettings = sttSettings,

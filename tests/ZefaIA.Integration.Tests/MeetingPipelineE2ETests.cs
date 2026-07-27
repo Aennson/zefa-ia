@@ -1,6 +1,7 @@
 using Xunit;
 using ZefaIA.App;
 using ZefaIA.Core.Models;
+using ZefaIA.Core.Triggers;
 using ZefaIA.Integration.Tests.Fakes;
 using ZefaIA.LLM;
 using ZefaIA.Persistence;
@@ -360,6 +361,120 @@ public class MeetingPipelineE2ETests
         await h.PumpSilenceAsync(TimeSpan.FromMilliseconds(600));
 
         Assert.Single(llm.ReceivedTranscripts);
+    }
+
+    // --- Hotkey (on-demand suggestion) -------------------------------------------
+
+    /// <summary>
+    /// Silence config that the silence trigger can never satisfy, so these tests observe
+    /// the hotkey and nothing else. The harness feeds silent loopback chunks, which is
+    /// generous compared to reality — WASAPI delivers no loopback audio at all when
+    /// nothing is playing, which is the very reason the hotkey exists.
+    /// </summary>
+    private static SilenceTriggerConfig HotkeyOnly() => new()
+    {
+        SilenceDuration = TimeSpan.FromHours(1),
+        Cooldown = TimeSpan.FromMilliseconds(1),
+        TranscriptRecencyWindow = TimeSpan.FromSeconds(30),
+        TranscriptWindow = TimeSpan.FromSeconds(60)
+    };
+
+    [Fact]
+    public async Task PressingTheHotkeyProducesASuggestionWithNoAudioPlaying()
+    {
+        var llm = new ScriptedLLMClient(_ => new[] { "Pergunte ", "sobre o orcamento." });
+        await using var h = await MeetingPipelineHarness.CreateAsync(
+            micScript: new[] { "falando sozinho no microfone" },
+            llm: llm,
+            silenceConfig: HotkeyOnly());
+
+        await h.StartAsync();
+
+        // Only the microphone produces audio — the loopback stays silent, which is what
+        // happens when nothing is playing through the speakers. The silence trigger
+        // cannot fire here; the hotkey is the only way to ask for a suggestion.
+        await h.PumpAsync(MeetingPipelineHarness.Speech(), MeetingPipelineHarness.Silence(), chunks: 12);
+        await MeetingPipelineHarness.WaitForAsync(() => h.Overlay.RenderedSegments.Count >= 1);
+
+        h.Hotkey.Press();
+
+        var suggested = await MeetingPipelineHarness.WaitForAsync(
+            () => h.Overlay.SuggestionsFinalized >= 1);
+        Assert.True(suggested, "the hotkey did not produce a suggestion");
+
+        Assert.Equal("Pergunte sobre o orcamento.", h.Overlay.RenderedSuggestion);
+        Assert.Contains("falando sozinho no microfone", Assert.Single(llm.ReceivedTranscripts));
+
+        await h.Orchestrator.StopMeetingAsync();
+
+        var sessionId = (await h.Repository.GetAllSessionsAsync()).Single().Id;
+        var stored = Assert.Single(await h.Repository.GetSuggestionsAsync(sessionId));
+        Assert.Equal("Pergunte sobre o orcamento.", stored.Text);
+    }
+
+    [Fact]
+    public async Task PressingTheHotkeyTwiceAsksAgainEvenWithTheSameTranscript()
+    {
+        var llm = new ScriptedLLMClient(_ => new[] { "ideia" });
+        await using var h = await MeetingPipelineHarness.CreateAsync(
+            micScript: new[] { "mesmo assunto" },
+            llm: llm,
+            silenceConfig: HotkeyOnly());
+
+        await h.StartAsync();
+        await h.PumpAsync(MeetingPipelineHarness.Speech(), MeetingPipelineHarness.Silence(), chunks: 12);
+        await MeetingPipelineHarness.WaitForAsync(() => h.Overlay.RenderedSegments.Count >= 1);
+
+        h.Hotkey.Press();
+        await MeetingPipelineHarness.WaitForAsync(() => llm.ReceivedTranscripts.Count >= 1);
+
+        h.Hotkey.Press();
+        var askedAgain = await MeetingPipelineHarness.WaitForAsync(
+            () => llm.ReceivedTranscripts.Count >= 2);
+
+        // Deduplication is meant to stop automatic triggers repeating themselves. An
+        // explicit press must always go through, or the shortcut looks broken.
+        Assert.True(askedAgain,
+            "the second press was swallowed by deduplication");
+    }
+
+    [Fact]
+    public async Task HotkeyWithoutAnLlmDoesNothingRatherThanFailing()
+    {
+        await using var h = await MeetingPipelineHarness.CreateAsync(
+            micScript: new[] { "sem llm configurado" },
+            llm: null);
+
+        await h.StartAsync();
+        await h.PumpAsync(MeetingPipelineHarness.Speech(), MeetingPipelineHarness.Silence(), chunks: 12);
+        await MeetingPipelineHarness.WaitForAsync(() => h.Overlay.RenderedSegments.Count >= 1);
+
+        h.Hotkey.Press();
+        await Task.Delay(200);
+
+        Assert.Equal(0, h.Overlay.SuggestionsFinalized);
+        Assert.Equal(MeetingState.Running, h.Orchestrator.State);
+    }
+
+    [Fact]
+    public async Task StoppingTheMeetingReleasesTheHotkey()
+    {
+        var llm = new ScriptedLLMClient(_ => new[] { "sugestao" });
+        await using var h = await MeetingPipelineHarness.CreateAsync(
+            micScript: new[] { "antes de parar" },
+            llm: llm,
+            silenceConfig: HotkeyOnly());
+
+        await h.StartAsync();
+        await h.PumpAsync(MeetingPipelineHarness.Speech(), MeetingPipelineHarness.Silence(), chunks: 12);
+        await MeetingPipelineHarness.WaitForAsync(() => h.Overlay.RenderedSegments.Count >= 1);
+        await h.Orchestrator.StopMeetingAsync();
+
+        h.Hotkey.Press();
+        await Task.Delay(200);
+
+        // A press after teardown must not reach a disposed graph.
+        Assert.Empty(llm.ReceivedTranscripts);
     }
 
     // --- Language detection ------------------------------------------------------

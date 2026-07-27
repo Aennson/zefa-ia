@@ -34,6 +34,7 @@ public sealed class MeetingPipelineHarness : IAsyncDisposable
     public FakeAudioSource Mic { get; } = new(AudioSourceType.Microphone);
     public FakeAudioSource Loopback { get; } = new(AudioSourceType.Loopback);
     public RecordingOverlayController Overlay { get; } = new();
+    public FakeHotkeyHost Hotkey { get; } = new();
     public ScriptedLLMClient? Llm { get; }
 
     /// <summary>STT providers handed to the orchestrator, in creation order (mic, then loopback).</summary>
@@ -79,6 +80,7 @@ public sealed class MeetingPipelineHarness : IAsyncDisposable
             Repository = Repository,
             Overlay = Overlay,
             AudioSourceFactory = () => new IAudioSource[] { Mic, Loopback },
+            HotkeyHost = Hotkey,
             AudioBufferSizeMs = audioBufferMs,
             OrchestratorConfig = orchestratorConfig,
             SilenceConfig = silenceConfig

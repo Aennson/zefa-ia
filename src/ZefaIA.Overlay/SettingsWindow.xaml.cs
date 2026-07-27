@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 
 namespace ZefaIA.Overlay;
 
@@ -9,6 +10,13 @@ public partial class SettingsWindow : Window
     public SettingsWindow()
     {
         InitializeComponent();
+    }
+
+    /// <summary>The window draws its own chrome, so the header stands in for a title bar.</summary>
+    private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ButtonState == MouseButtonState.Pressed)
+            DragMove();
     }
 
     public void LoadSettings(AppSettings settings)

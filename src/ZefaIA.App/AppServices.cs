@@ -36,12 +36,19 @@ public sealed class AppServices : IAsyncDisposable
     public Func<IEnumerable<IAudioSource>> AudioSourceFactory { get; init; } =
         static () => new IAudioSource[] { new MicrophoneSource(), new LoopbackSource() };
 
+    /// <summary>
+    /// Receives the global hotkey messages. Null disables the manual trigger — the
+    /// pipeline still transcribes and records, exactly as it does without an LLM.
+    /// </summary>
+    public IHotkeyHost? HotkeyHost { get; init; }
+
     public int AudioBufferSizeMs { get; init; } = 100;
     public OrchestratorConfig OrchestratorConfig { get; init; } = new();
     public SilenceTriggerConfig SilenceConfig { get; init; } = new();
 
     public async ValueTask DisposeAsync()
     {
+        HotkeyHost?.Dispose();
         Overlay.Dispose();
         await SttManager.DisposeAsync();
         if (LlmClient != null)

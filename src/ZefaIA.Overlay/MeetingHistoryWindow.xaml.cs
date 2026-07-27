@@ -20,6 +20,15 @@ public partial class MeetingHistoryWindow : Window
         LstSessions.ItemsSource = _items;
     }
 
+    /// <summary>The window draws its own chrome, so the header stands in for a title bar.</summary>
+    private void Header_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ButtonState == System.Windows.Input.MouseButtonState.Pressed)
+            DragMove();
+    }
+
+    private void BtnClose_Click(object sender, RoutedEventArgs e) => Close();
+
     public async Task LoadSessionsAsync()
     {
         _allSessions = await _repository.GetAllSessionsAsync();

@@ -2,80 +2,157 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Zefa IA - Historico de Reunioes"
-        Width="700" Height="520"
+        Width="900" Height="620"
+        MinWidth="700" MinHeight="480"
         WindowStartupLocation="CenterScreen"
-        Background="#1A1A2E"
-        ResizeMode="CanResize"
-        MinWidth="500" MinHeight="400">
+        WindowStyle="None" ResizeMode="CanResize"
+        AllowsTransparency="True" Background="Transparent"
+        FontFamily="{DynamicResource AppFont}">
 
     <Window.Resources>
-        <Style TargetType="TextBlock" x:Key="SectionHeader">
-            <Setter Property="Foreground" Value="#A78BFA"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,8,0,8"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ZefaIA.Overlay;component/Themes/ZefaTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Cada reuniao vira um card selecionavel na coluna da esquerda. -->
+            <Style x:Key="SessionItem" TargetType="ListBoxItem">
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Margin" Value="0,0,0,6" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="ListBoxItem">
+                            <Border x:Name="bd" CornerRadius="10" Padding="14,11"
+                                    Background="{StaticResource CardBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
+                                <ContentPresenter />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="{StaticResource CardHoverBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                    <Setter TargetName="bd" Property="Background" Value="#231F3A" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
-    <Grid Margin="16">
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="240" MinWidth="180"/>
-            <ColumnDefinition Width="4"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
+    <Border Background="{StaticResource BgLayerBrush}" CornerRadius="16"
+            BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" ShadowDepth="8" Opacity="0.55" Color="Black" />
+        </Border.Effect>
 
-        <!-- Session List -->
-        <DockPanel Grid.Column="0">
-            <TextBlock Text="Reunioes" Style="{StaticResource SectionHeader}" DockPanel.Dock="Top"/>
+        <Grid Margin="28">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-            <TextBox x:Name="TxtSearch" DockPanel.Dock="Top"
-                     Height="28" Margin="0,0,0,8" Padding="4,2"
-                     TextChanged="TxtSearch_TextChanged"/>
+            <Grid Grid.Row="0" Margin="0,0,0,20" Background="Transparent"
+                  MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="42" Height="42" CornerRadius="11"
+                            Background="{StaticResource AccentGradientBrush}" VerticalAlignment="Center">
+                        <TextBlock Text="&#xE81C;" Style="{StaticResource Glyph}"
+                                   FontSize="20" Foreground="White" />
+                    </Border>
+                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Historico" Style="{StaticResource H1}" />
+                        <TextBlock Text="Transcricoes e sugestoes das reunioes anteriores"
+                                   Style="{StaticResource Caption}" Margin="0,2,0,0" />
+                    </StackPanel>
+                </StackPanel>
+                <Button Style="{StaticResource IconButton}" Content="&#xE711;"
+                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Click="BtnClose_Click" ToolTip="Fechar" />
+            </Grid>
 
-            <Button x:Name="BtnDelete" Content="Deletar" DockPanel.Dock="Bottom"
-                    Height="28" Margin="0,8,0,0"
-                    Background="#DC2626" Foreground="White"
-                    Click="BtnDelete_Click"/>
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="290" MinWidth="230" />
+                    <ColumnDefinition Width="24" />
+                    <ColumnDefinition Width="*" MinWidth="280" />
+                </Grid.ColumnDefinitions>
 
-            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Margin="0,8,0,0">
-                <Button x:Name="BtnExportTxt" Content="Exportar TXT"
-                        Width="115" Height="28" Margin="0,0,6,0"
-                        Background="#2D2D44" Foreground="#CCFFFFFF"
-                        Click="BtnExportTxt_Click"/>
-                <Button x:Name="BtnExportJson" Content="Exportar JSON"
-                        Width="115" Height="28"
-                        Background="#2D2D44" Foreground="#CCFFFFFF"
-                        Click="BtnExportJson_Click"/>
-            </StackPanel>
+                <!-- Lista -->
+                <DockPanel Grid.Column="0">
+                    <TextBox x:Name="TxtSearch" DockPanel.Dock="Top"
+                             Style="{StaticResource AppTextBox}" Margin="0,0,0,14"
+                             TextChanged="TxtSearch_TextChanged"
+                             ToolTip="Busca por titulo, agenda ou conteudo da transcricao" />
 
-            <ListBox x:Name="LstSessions"
-                     Background="#12122A" Foreground="#CCFFFFFF"
-                     BorderBrush="#333355"
-                     SelectionChanged="LstSessions_SelectionChanged">
-                <ListBox.ItemTemplate>
-                    <DataTemplate>
-                        <StackPanel Margin="4,2">
-                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" Foreground="#E0E0FF"/>
-                            <TextBlock Text="{Binding DateDisplay}" FontSize="11" Foreground="#8888AA"/>
+                    <Button x:Name="BtnDelete" DockPanel.Dock="Bottom"
+                            Style="{StaticResource SecondaryButton}" Margin="0,10,0,0"
+                            Click="BtnDelete_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="&#xE74D;" FontFamily="{StaticResource IconFont}" FontSize="14"
+                                       Foreground="{StaticResource DangerBrush}"
+                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <TextBlock Text="Deletar" VerticalAlignment="Center" />
                         </StackPanel>
-                    </DataTemplate>
-                </ListBox.ItemTemplate>
-            </ListBox>
-        </DockPanel>
+                    </Button>
 
-        <GridSplitter Grid.Column="1" Width="4" Background="#333355"
-                      HorizontalAlignment="Stretch" VerticalAlignment="Stretch"/>
+                    <Grid DockPanel.Dock="Bottom" Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button x:Name="BtnExportTxt" Grid.Column="0" Margin="0,0,5,0"
+                                Style="{StaticResource SecondaryButton}" Content="TXT"
+                                Click="BtnExportTxt_Click" ToolTip="Exportar como texto" />
+                        <Button x:Name="BtnExportJson" Grid.Column="1" Margin="5,0,0,0"
+                                Style="{StaticResource SecondaryButton}" Content="JSON"
+                                Click="BtnExportJson_Click" ToolTip="Exportar como JSON" />
+                    </Grid>
 
-        <!-- Detail Panel -->
-        <DockPanel Grid.Column="2">
-            <TextBlock x:Name="TxtDetailHeader" Style="{StaticResource SectionHeader}" DockPanel.Dock="Top"
-                       Text="Selecione uma reuniao"/>
-            <TextBlock x:Name="TxtDetailMeta" DockPanel.Dock="Top"
-                       Foreground="#8888AA" FontSize="11" Margin="0,0,0,8"/>
+                    <ListBox x:Name="LstSessions"
+                             Background="Transparent" BorderThickness="0"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ItemContainerStyle="{StaticResource SessionItem}"
+                             SelectionChanged="LstSessions_SelectionChanged">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel>
+                                    <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14"
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding DateDisplay}" FontSize="12" Margin="0,3,0,0"
+                                               Foreground="{StaticResource TextMutedBrush}" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </DockPanel>
 
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                <StackPanel x:Name="PnlDetail"/>
-            </ScrollViewer>
-        </DockPanel>
-    </Grid>
+                <GridSplitter Grid.Column="1" Width="4" HorizontalAlignment="Center"
+                              VerticalAlignment="Stretch" Background="{StaticResource BorderBrush}" />
+
+                <!-- Detalhe -->
+                <Border Grid.Column="2" Style="{StaticResource Card}">
+                    <DockPanel>
+                        <TextBlock x:Name="TxtDetailHeader" DockPanel.Dock="Top"
+                                   Style="{StaticResource H2}" Text="Selecione uma reuniao"
+                                   TextWrapping="Wrap" />
+                        <TextBlock x:Name="TxtDetailMeta" DockPanel.Dock="Top"
+                                   Style="{StaticResource Caption}" Margin="0,4,0,14"
+                                   TextWrapping="Wrap" />
+
+                        <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                      HorizontalScrollBarVisibility="Disabled">
+                            <StackPanel x:Name="PnlDetail" />
+                        </ScrollViewer>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </Border>
 </Window>

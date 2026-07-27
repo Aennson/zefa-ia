@@ -43,6 +43,7 @@ public sealed class MeetingOrchestrator : IAsyncDisposable
     private SuggestionStreamPipeline? _suggestionPipeline;
     private SuggestionOrchestrator? _suggestionOrchestrator;
     private SilenceTrigger? _silenceTrigger;
+    private HotkeyTrigger? _hotkeyTrigger;
     private MeetingRecorder? _recorder;
 
     private readonly TranscriptionTimeline _timeline = new();
@@ -179,6 +180,8 @@ public sealed class MeetingOrchestrator : IAsyncDisposable
 
             _suggestionOrchestrator.TranscriptProvider = BuildTranscriptWindow;
             _suggestionOrchestrator.RegisterTrigger(_silenceTrigger);
+
+            RegisterSuggestionHotkey(settings.HotkeySuggestion);
         }
         else
         {
@@ -221,6 +224,44 @@ public sealed class MeetingOrchestrator : IAsyncDisposable
 
         _languageDetector.OnLanguageDetected += OnLanguageDetected;
     }
+
+    /// <summary>
+    /// Wires the on-demand suggestion hotkey. This is the only trigger that works when
+    /// nothing is playing through the speakers: the silence trigger watches the loopback
+    /// stream, and WASAPI delivers no loopback audio at all while the render endpoint is
+    /// idle, so a user talking alone into the microphone would never get a suggestion.
+    /// </summary>
+    private void RegisterSuggestionHotkey(string? hotkey)
+    {
+        if (_services.HotkeyHost is null)
+        {
+            _logger.LogInformation("Suggestion hotkey disabled — no hotkey host available");
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(hotkey))
+            return;
+
+        var binding = HotkeyTrigger.ParseHotkeyString(hotkey);
+        if (binding.Key == 0)
+        {
+            _logger.LogWarning("Could not parse suggestion hotkey '{Hotkey}'", hotkey);
+            return;
+        }
+
+        _hotkeyTrigger = new HotkeyTrigger();
+        _hotkeyTrigger.RegisterHotkey(binding with
+        {
+            TranscriptWindow = _services.SilenceConfig.TranscriptWindow
+        });
+        _hotkeyTrigger.AttachToWindow(_services.HotkeyHost.Handle);
+        _services.HotkeyHost.HotkeyMessage += OnHotkeyMessage;
+
+        _suggestionOrchestrator!.RegisterTrigger(_hotkeyTrigger);
+        _logger.LogInformation("Suggestion hotkey registered: {Hotkey}", hotkey);
+    }
+
+    private void OnHotkeyMessage(IntPtr wParam) => _hotkeyTrigger?.ProcessMessage(wParam);
 
     private void OnFinalSegment(TranscriptionSegmentEventArgs args)
     {
@@ -333,7 +374,11 @@ public sealed class MeetingOrchestrator : IAsyncDisposable
         }
         _languageDetector.OnLanguageDetected -= OnLanguageDetected;
 
+        if (_services.HotkeyHost != null)
+            _services.HotkeyHost.HotkeyMessage -= OnHotkeyMessage;
+
         await DisposeSafe(_recorder);
+        DisposeSafe(_hotkeyTrigger);
         DisposeSafe(_suggestionOrchestrator);
         DisposeSafe(_suggestionPipeline);
         DisposeSafe(_silenceTrigger);
@@ -352,6 +397,7 @@ public sealed class MeetingOrchestrator : IAsyncDisposable
         _suggestionOrchestrator = null;
         _suggestionPipeline = null;
         _silenceTrigger = null;
+        _hotkeyTrigger = null;
         _llmSession = null;
         _transcriptionEngine = null;
         _audioPipeline = null;

@@ -50,6 +50,13 @@ public class NewMeetingWindowLayoutTests
                 {
                     var a = controls[i];
                     var b = controls[j];
+
+                    // Layout coordinates ignore clipping, so a field scrolled below the
+                    // fold would look like it overlaps the footer. Only compare controls
+                    // that share a scrolling container.
+                    if (!ReferenceEquals(NearestScroller(a.Element), NearestScroller(b.Element)))
+                        continue;
+
                     var overlap = Rect.Intersect(a.Bounds, b.Bounds);
 
                     Assert.True(
@@ -146,6 +153,13 @@ public class NewMeetingWindowLayoutTests
 
     private static IEnumerable<FrameworkElement> InteractiveElements(DependencyObject root) =>
         Descendants(root).Where(e => e is TextBox or Button);
+
+    private static ScrollViewer? NearestScroller(DependencyObject element)
+    {
+        for (var p = VisualTreeHelper.GetParent(element); p != null; p = VisualTreeHelper.GetParent(p))
+            if (p is ScrollViewer sv) return sv;
+        return null;
+    }
 
     private static Rect BoundsWithin(FrameworkElement element, FrameworkElement ancestor)
     {
