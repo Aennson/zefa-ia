@@ -163,10 +163,34 @@ public partial class App : System.Windows.Application
 
         if (window.ShowDialog() != true) return;
 
-        // Settings that only affect the next meeting (STT provider, profile) are
-        // picked up when the graph is rebuilt; overlay values apply immediately.
         var updated = window.GetCurrentSettings();
         await updated.SaveAsync(AppBootstrapper.SettingsPath);
+
+        ApplySavedSettings(_services, updated);
+    }
+
+    /// <summary>
+    /// Pushes saved settings onto the running app, so an API key pasted into Settings
+    /// works on the next meeting instead of requiring a restart. Settings that only shape
+    /// a meeting (STT provider, profile) are read when the graph is rebuilt.
+    /// </summary>
+    internal static void ApplySavedSettings(AppServices services, AppSettings updated)
+    {
+        services.Settings = updated;
+
+        // STTServiceManager holds this instance, so mutating it is what makes a new key
+        // reach the next provider it builds.
+        AppBootstrapper.ApplyUserSettings(services.SttSettings, updated);
+
+        // The Claude client caches the key in a request header at construction, so a
+        // changed key means a new client. Also covers going from no key to a key, which
+        // is what turns suggestions on without a restart.
+        var previous = services.LlmClient;
+        services.LlmClient = AppBootstrapper.TryCreateLlmClient(
+            updated, services.LoggerFactory, services.LoggerFactory.CreateLogger("Settings"));
+
+        if (previous != null)
+            _ = previous.DisposeAsync().AsTask();
     }
 
     private async void OnHistoryRequested()

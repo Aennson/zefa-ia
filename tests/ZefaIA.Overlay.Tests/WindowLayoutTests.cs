@@ -60,7 +60,7 @@ public class WindowLayoutTests
     private static void AssertNoOverlap(FrameworkElement root)
     {
         var controls = Descendants(root)
-            .Where(e => e is TextBox or Button or ComboBox or CheckBox or Slider)
+            .Where(e => e is TextBox or Button or ComboBox or CheckBox or Slider or PasswordBox)
             .Select(e => (Element: e, Bounds: BoundsWithin(e, root)))
             .Where(x => x.Bounds is { Width: > 0, Height: > 0 })
             .ToList();

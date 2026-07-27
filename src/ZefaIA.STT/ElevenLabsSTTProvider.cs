@@ -46,16 +46,35 @@ public sealed class ElevenLabsSTTProvider : ISTTProvider
 
         _config = config;
 
-        var apiKeyEnvVar = config.Options.GetValueOrDefault("ApiKeyEnvVar", "ELEVENLABS_API_KEY");
-        _apiKey = Environment.GetEnvironmentVariable(apiKeyEnvVar)
-            ?? throw new InvalidOperationException(
-                $"ElevenLabs API key not found. Set environment variable '{apiKeyEnvVar}'.");
+        _apiKey = ResolveApiKey(config);
 
         await ConnectAsync(ct);
         _initialized = true;
 
         _receiveCts = new CancellationTokenSource();
         _receiveTask = Task.Run(() => ReceiveLoop(_receiveCts.Token), _receiveCts.Token);
+    }
+
+    /// <summary>
+    /// A key configured in the Settings window wins; the environment variable is the
+    /// fallback for setups that predate that field. Whitespace counts as absent, because
+    /// pasted keys pick up trailing newlines and the API answers those with a 401 that
+    /// looks like a wrong key.
+    /// </summary>
+    internal static string ResolveApiKey(STTProviderConfig config)
+    {
+        var configured = config.Options.GetValueOrDefault("ApiKey", "");
+        if (!string.IsNullOrWhiteSpace(configured))
+            return configured.Trim();
+
+        var envVar = config.Options.GetValueOrDefault("ApiKeyEnvVar", "ELEVENLABS_API_KEY");
+        var fromEnvironment = Environment.GetEnvironmentVariable(envVar);
+        if (!string.IsNullOrWhiteSpace(fromEnvironment))
+            return fromEnvironment.Trim();
+
+        throw new InvalidOperationException(
+            "ElevenLabs API key not found. Set it in Configuracoes -> Chaves de API, " +
+            $"or in the environment variable '{envVar}'.");
     }
 
     public async Task ProcessAudioAsync(AudioChunkEventArgs chunk, CancellationToken ct = default)

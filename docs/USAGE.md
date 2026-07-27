@@ -48,24 +48,49 @@ Clique com o botao direito no icone da bandeja → **Configuracoes**.
 Preencher o perfil e o passo com maior impacto na qualidade das sugestoes.
 Sem ele a Zefa gera conselhos genericos.
 
-### Chave da API do Claude
+### Chaves de API
 
-As sugestoes usam a API do Claude. Defina a variavel de ambiente:
+Configuracoes → **Chaves de API**. Cole a chave no campo e salve.
 
-```powershell
-# Permanente, para o seu usuario
-[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "sua-chave-aqui", "User")
-```
+| Campo | Para que serve | Onde gerar |
+|-------|----------------|------------|
+| Anthropic | As sugestoes | https://platform.claude.com/ → **API keys** |
+| ElevenLabs | Transcricao na nuvem (opcional) | https://elevenlabs.io → perfil → **API Keys** |
 
-Feche e reabra o Zefa IA depois de definir.
+**Mostrar chaves** revela o que foi digitado, para conferir uma colagem.
+**Testar chaves** pergunta aos dois servicos se a chave e aceita — nao gera nada,
+entao pode apertar a vontade.
 
-> **Sem a chave o app continua funcionando** — transcreve, salva no historico e
-> exporta normalmente. Apenas as sugestoes ficam desligadas.
+A chave vale a partir da **proxima reuniao**; nao precisa reiniciar o app.
 
-Chave em https://platform.claude.com/ → **API keys**.
+> **Sem a chave da Anthropic o app continua funcionando** — transcreve, salva no
+> historico e exporta normalmente. Apenas as sugestoes ficam desligadas.
 
 > Assinatura do Claude.ai (Pro/Max) **nao da acesso a API** — sao cobrados
 > separadamente. A API usa creditos pre-pagos, adicionados em *Billing*.
+
+#### Onde as chaves ficam guardadas
+
+Criptografadas com DPAPI dentro de `settings.json`, amarradas a **sua conta do
+Windows**. Um `settings.json` copiado para outra maquina ou outro usuario nao
+descriptografa — o app simplesmente se comporta como se nao houvesse chave.
+
+Isso protege a chave de vazar junto com um backup ou um arquivo de suporte. Nao
+protege contra um programa malicioso rodando na sua conta; nada guardado
+localmente protege.
+
+#### Variavel de ambiente (alternativa)
+
+Continua funcionando, para quem prefere nao guardar a chave no disco:
+
+```powershell
+[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "sua-chave-aqui", "User")
+[Environment]::SetEnvironmentVariable("ELEVENLABS_API_KEY", "sua-chave-aqui", "User")
+```
+
+Feche e reabra o Zefa IA depois de definir. **O campo em Configuracoes tem
+prioridade** sobre a variavel; deixe-o em branco para usar a variavel. A tela
+mostra ao lado de cada campo de onde a chave esta vindo.
 
 ---
 
@@ -154,8 +179,7 @@ Botao direito na bandeja → **Historico**.
 | Precisa de internet | Nao | Sim |
 
 **Padrao: Whisper Local.** Escolha ElevenLabs so se a precisao do Whisper nao
-estiver dando conta. Exige `ELEVENLABS_API_KEY`, definida do mesmo jeito que a
-chave do Claude. A chave se gera em https://elevenlabs.io → perfil → **API Keys**.
+estiver dando conta. Exige uma chave, configurada em **Chaves de API** (secao 2).
 
 > **ElevenLabs nao substitui o Claude.** Ela troca apenas quem transcreve o audio.
 > As sugestoes continuam vindo do Claude, e sem `ANTHROPIC_API_KEY` continuam
@@ -184,7 +208,7 @@ Tudo fica local:
 ```
 %APPDATA%\ZefaIA\
 ├── meetings.db      historico de reunioes
-├── settings.json    suas configuracoes
+├── settings.json    suas configuracoes (chaves de API criptografadas)
 └── crashes\         relatorios de erro (nunca enviados)
 ```
 
@@ -246,9 +270,9 @@ outros). Se falta um lado:
 1. **Aperte `Ctrl+Shift+Space`.** A sugestao automatica depende do audio que sai
    pelas caixas; testando sozinho com o PC mudo ela nunca dispara. Esse e de longe
    o motivo mais comum
-2. `ANTHROPIC_API_KEY` esta definida **no nivel do usuario**? Uma variavel setada
-   numa janela do PowerShell nao chega ao app aberto pelo Explorer. Reinicie o app
-   depois de definir
+2. Ha chave configurada? Abra Configuracoes → **Chaves de API** e aperte
+   **Testar chaves**. O rotulo ao lado do campo diz se a chave esta salva ali,
+   vindo de variavel de ambiente, ou ausente
 3. Alguem falou algo? A Zefa nao sugere sem transcricao recente
 4. Ela responde `[SEM SUGESTAO]` de proposito quando nao tem nada util a dizer —
    isso e comportamento normal, nao falha

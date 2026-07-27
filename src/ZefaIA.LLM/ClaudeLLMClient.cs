@@ -27,8 +27,11 @@ public sealed class ClaudeLLMClient : ILLMClient
         ILogger<ClaudeLLMClient>? logger = null,
         TimeSpan? timeout = null)
     {
-        _apiKey = apiKey ?? Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY")
-            ?? throw new InvalidOperationException("ANTHROPIC_API_KEY not set");
+        _apiKey = Blank(apiKey) ? Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY")! : apiKey!;
+        if (Blank(_apiKey))
+            throw new InvalidOperationException(
+                "No Anthropic API key. Set it in Configuracoes -> Chaves de API, " +
+                "or in the ANTHROPIC_API_KEY environment variable.");
         _httpClient = httpClient ?? new HttpClient();
         _logger = logger ?? NullLogger<ClaudeLLMClient>.Instance;
         _timeout = timeout ?? TimeSpan.FromSeconds(30);
@@ -38,6 +41,9 @@ public sealed class ClaudeLLMClient : ILLMClient
         // No anthropic-beta header: prompt caching is generally available, and the old
         // prompt-caching-2024-07-31 flag is no longer needed to use cache_control.
     }
+
+    /// <summary>An all-whitespace key is as absent as a null one, and pasting picks up spaces.</summary>
+    private static bool Blank(string? value) => string.IsNullOrWhiteSpace(value);
 
     public Task<ILLMSession> CreateSessionAsync(LLMSessionConfig config, CancellationToken ct = default)
     {

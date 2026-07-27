@@ -44,19 +44,8 @@ public static class AppBootstrapper
         var sttManager = new STTServiceManager(
             factory, sttSettings, loggerFactory.CreateLogger<STTServiceManager>());
 
-        // 6. LLM client. A missing API key is not fatal: the app degrades to
-        // transcribe-and-record mode rather than refusing to launch.
-        ILLMClient? llmClient = null;
-        try
-        {
-            llmClient = new ClaudeLLMClient(
-                logger: loggerFactory.CreateLogger<ClaudeLLMClient>());
-            logger.LogInformation("LLM client ready");
-        }
-        catch (InvalidOperationException ex)
-        {
-            logger.LogWarning("LLM disabled: {Reason}. Transcription and history still work.", ex.Message);
-        }
+        // 6. LLM client, from the key saved in Settings or the environment variable.
+        var llmClient = TryCreateLlmClient(settings, loggerFactory, logger);
 
         // 7. Overlay, created hidden
         var overlay = new OverlayController(new OverlaySettings
@@ -124,6 +113,19 @@ public static class AppBootstrapper
             }
         };
 
+        ApplyUserSettings(stt, userSettings);
+        return stt;
+    }
+
+    /// <summary>
+    /// Copies the user-editable half of the settings onto an existing <see cref="STTSettings"/>.
+    ///
+    /// Mutates in place rather than returning a new object on purpose: <see cref="STTServiceManager"/>
+    /// captures the instance at construction, so replacing the reference would leave it
+    /// serving the old values and a key saved in Settings would not take effect until restart.
+    /// </summary>
+    internal static void ApplyUserSettings(STTSettings stt, AppSettings userSettings)
+    {
         if (!string.IsNullOrWhiteSpace(userSettings.SttProvider))
             stt.ActiveProvider = userSettings.SttProvider;
         if (!string.IsNullOrWhiteSpace(userSettings.WhisperModelSize))
@@ -134,7 +136,29 @@ public static class AppBootstrapper
             stt.ElevenLabs.Language = userSettings.Language;
         }
         stt.WhisperLocal.UseGPU = userSettings.UseGPU;
+        stt.ElevenLabs.ApiKey = userSettings.ResolveElevenLabsApiKey() ?? "";
+    }
 
-        return stt;
+    /// <summary>
+    /// Builds the Claude client, or returns null when no key is configured. A missing key
+    /// is not fatal: the app degrades to transcribe-and-record rather than refusing to run.
+    /// </summary>
+    internal static ILLMClient? TryCreateLlmClient(
+        AppSettings settings, ILoggerFactory loggerFactory, ILogger logger)
+    {
+        try
+        {
+            var client = new ClaudeLLMClient(
+                apiKey: settings.ResolveAnthropicApiKey(),
+                logger: loggerFactory.CreateLogger<ClaudeLLMClient>());
+
+            logger.LogInformation("LLM client ready (key from {Source})", settings.AnthropicApiKeySource);
+            return client;
+        }
+        catch (InvalidOperationException ex)
+        {
+            logger.LogWarning("LLM disabled: {Reason}. Transcription and history still work.", ex.Message);
+            return null;
+        }
     }
 }

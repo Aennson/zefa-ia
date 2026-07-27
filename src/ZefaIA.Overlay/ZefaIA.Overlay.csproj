@@ -15,6 +15,10 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
   <ItemGroup>
+    <!-- DPAPI, so API keys are not stored as plaintext in settings.json. -->
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\ZefaIA.Core\ZefaIA.Core.csproj" />
     <ProjectReference Include="..\ZefaIA.Persistence\ZefaIA.Persistence.csproj" />
   </ItemGroup>

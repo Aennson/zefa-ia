@@ -18,6 +18,13 @@ public class WhisperLocalSettings
 
 public class ElevenLabsSettings
 {
+    /// <summary>
+    /// The key itself, when the user configured one in Settings. Takes precedence over
+    /// <see cref="ApiKeyEnvVar"/>; empty means "fall back to the environment variable".
+    /// Never persisted here — it is read from the (encrypted) app settings at startup.
+    /// </summary>
+    public string ApiKey { get; set; } = "";
+
     public string ApiKeyEnvVar { get; set; } = "ELEVENLABS_API_KEY";
     public string Language { get; set; } = "auto";
     public bool VadEnabled { get; set; } = true;

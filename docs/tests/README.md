@@ -31,14 +31,14 @@ docs/tests/
 
 ## Estado atual da suite
 
-**525 testes: 519 passando, 6 opt-in.** Ultima execucao completa em Windows 11 x64.
+**586 testes: 580 passando, 6 opt-in.** Ultima execucao completa em Windows 11 x64.
 
 | Projeto | Testes |
 |---|---:|
-| ZefaIA.App.Tests | 132 |
-| ZefaIA.STT.Tests | 90 |
+| ZefaIA.App.Tests | 141 |
+| ZefaIA.Overlay.Tests | 115 |
+| ZefaIA.STT.Tests | 100 |
 | ZefaIA.LLM.Tests | 88 |
-| ZefaIA.Overlay.Tests | 73 |
 | ZefaIA.Persistence.Tests | 73 |
 | ZefaIA.Audio.Tests | 44 |
 | ZefaIA.Integration.Tests | 25 |

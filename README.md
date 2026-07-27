@@ -33,10 +33,10 @@ Assistente de reunioes em tempo real para Windows. Captura audio dual (microfone
 
 ### API Keys (opcionais)
 
-| Servico | Variavel de Ambiente | Para que serve |
-|---------|---------------------|----------------|
-| Claude (Anthropic) | `ANTHROPIC_API_KEY` | Sugestoes via LLM |
-| ElevenLabs | `ELEVENLABS_API_KEY` | STT alternativo ao Whisper local |
+| Servico | Para que serve | Variavel de ambiente equivalente |
+|---------|----------------|----------------------------------|
+| Claude (Anthropic) | Sugestoes via LLM | `ANTHROPIC_API_KEY` |
+| ElevenLabs | STT alternativo ao Whisper local | `ELEVENLABS_API_KEY` |
 
 > **ElevenLabs e STT, nao LLM.** Ela substitui o Whisper na transcricao; quem gera
 > as sugestoes e sempre o Claude. Configurar ElevenLabs sem `ANTHROPIC_API_KEY`
@@ -46,12 +46,26 @@ Assistente de reunioes em tempo real para Windows. Captura audio dual (microfone
 > Sem `ANTHROPIC_API_KEY` o app inicia normalmente em modo so-transcricao:
 > grava, salva no historico e exporta; apenas as sugestoes ficam desligadas.
 
-O app le as chaves **apenas de variaveis de ambiente**. Como ele roda na bandeja,
-defina no nivel do usuario para que valham ao abrir pelo Explorer:
+Configure em **Configuracoes → Chaves de API**, com botao para testar a chave
+contra o servico antes de depender dela numa reuniao.
+
+As chaves ficam **criptografadas com DPAPI** dentro de `settings.json`, amarradas a
+conta do Windows: um arquivo copiado para outra maquina ou outro usuario nao
+descriptografa e o app se comporta como se nao houvesse chave. Nada de segredo em
+texto puro no disco.
+
+Variavel de ambiente continua valendo como alternativa, para quem prefere nao
+guardar a chave. Como o app roda na bandeja, defina no nivel do usuario para que
+valha ao abrir pelo Explorer:
 
 ```powershell
 [Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "sk-ant-...", "User")
 ```
+
+**O campo em Configuracoes tem prioridade sobre a variavel** — quem acabou de colar
+uma chave na tela espera que ela valha, e nao teria como descobrir uma variavel
+definida meses atras. Deixe o campo em branco para usar a variavel; a tela mostra
+de onde cada chave esta vindo.
 
 ## Uso
 
@@ -71,7 +85,7 @@ cd zefa-ia
 # Compilar
 dotnet build
 
-# Rodar testes (525 no total; 6 sao opt-in por variavel de ambiente)
+# Rodar testes (586 no total; 6 sao opt-in por variavel de ambiente)
 dotnet test
 
 # Executar
@@ -121,11 +135,11 @@ zefa-ia/
 │   └── ZefaIA.App/            # Orquestracao, system tray, bootstrap, crash reports
 ├── tests/
 │   ├── ZefaIA.Audio.Tests/       # 44 testes de audio
-│   ├── ZefaIA.STT.Tests/         # 90 testes de STT, idioma e caminho do modelo
-│   ├── ZefaIA.Overlay.Tests/     # 73 testes de overlay, layout, settings e historico
+│   ├── ZefaIA.STT.Tests/         # 100 testes de STT, idioma, chave e caminho do modelo
+│   ├── ZefaIA.Overlay.Tests/     # 115 testes de overlay, layout, settings, chaves e historico
 │   ├── ZefaIA.LLM.Tests/         # 88 testes de LLM, triggers e orquestracao
 │   ├── ZefaIA.Persistence.Tests/ # 73 testes de SQLite, recorder e export
-│   ├── ZefaIA.App.Tests/         # 132 testes de orquestracao e resiliencia
+│   ├── ZefaIA.App.Tests/         # 141 testes de orquestracao, chaves e resiliencia
 │   └── ZefaIA.Integration.Tests/ #  25 testes ponta a ponta do pipeline
 ├── installer/                 # Script Inno Setup e build do instalador
 └── docs/
@@ -252,13 +266,13 @@ dotnet test --filter "EchoCancellerTests.Process_WithMatchingReference_ReducesEc
 | Projeto | Testes | Cobertura |
 |---------|--------|-----------|
 | ZefaIA.Audio.Tests | 44 | Resampler, captura real (mic e loopback), AEC, pipeline, WAV |
-| ZefaIA.STT.Tests | 90 | Factory, Whisper, ElevenLabs, engine, timeline, idioma, caminho do modelo |
-| ZefaIA.Overlay.Tests | 73 | Layout das janelas, interacao e captura do overlay, markdown, settings, historico |
+| ZefaIA.STT.Tests | 100 | Factory, Whisper, ElevenLabs, engine, timeline, idioma, resolucao de chave e do caminho do modelo |
+| ZefaIA.Overlay.Tests | 115 | Layout das janelas, interacao e captura do overlay, markdown, settings, criptografia e validacao de chaves, historico |
 | ZefaIA.LLM.Tests | 88 | Claude client, prompt builder, triggers, pipeline, orchestrator |
 | ZefaIA.Persistence.Tests | 73 | Repositorio SQLite, cascade delete, recorder, exportacao TXT/JSON |
-| ZefaIA.App.Tests | 132 | Stage runner, bootstrap, tray, retry, health, scrubber, latencia |
+| ZefaIA.App.Tests | 141 | Stage runner, bootstrap, tray, retry, health, scrubber, latencia, plumbing das chaves |
 | ZefaIA.Integration.Tests | 25 | Pipeline ponta a ponta: audio → STT → trigger → LLM → overlay → SQLite → export |
-| **Total** | **525** | **519 passando, 6 opt-in** |
+| **Total** | **586** | **580 passando, 6 opt-in** |
 
 ### Testes opt-in
 
@@ -284,6 +298,7 @@ e pulam com motivo onde nao ha.
 - **Reactive streams** — System.Reactive para buffering, backpressure e composicao de streams de audio
 - **Overlay clicavel por padrao** — click-through existe como API, mas nao ligado: e tudo-ou-nada por janela, entao um botao que o ligasse nunca conseguiria desliga-lo
 - **Alias de modelo sem data** — `claude-sonnet-5` em vez de um snapshot datado, que expira silenciosamente
+- **Chaves criptografadas com DPAPI** — `settings.json` fica em `%APPDATA%`, e viaja em backups e pedidos de suporte; a chave nao viaja junto
 - **LGPD** — Dados de reuniao sao locais e por sessao; o usuario decide se salva
 
 ## Limitacoes Conhecidas
@@ -295,6 +310,8 @@ e pulam com motivo onde nao ha.
   nas Configuracoes mas ainda nao sao registrados.
 - **O registro do atalho falha em silencio** se outro app ja tiver a combinacao.
 - **O tamanho do overlay nao persiste** entre execucoes do app.
+- **Uma chave trocada so vale na proxima reuniao** — a reuniao em andamento segue
+  com o cliente que ja estava aberto.
 - **A secao `LLM` do `appsettings.json` nao esta ligada** (ver Configuracao).
 - **`ZefaIA.LLM` fala com a API da Anthropic via `HttpClient` cru**; existe SDK oficial para C#.
 

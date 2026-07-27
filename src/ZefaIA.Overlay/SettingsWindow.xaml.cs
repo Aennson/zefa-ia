@@ -1,11 +1,18 @@
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 
 namespace ZefaIA.Overlay;
 
 public partial class SettingsWindow : Window
 {
     public event EventHandler<AppSettings>? SettingsSaved;
+
+    /// <summary>
+    /// Swapped in tests so the key check does not depend on the network. Created lazily
+    /// so opening Settings costs nothing until the user presses "Testar chaves".
+    /// </summary>
+    internal Func<ApiKeyValidator> ValidatorFactory { get; set; } = static () => new ApiKeyValidator();
 
     public SettingsWindow()
     {
@@ -41,6 +48,17 @@ public partial class SettingsWindow : Window
         };
         ChkGpu.IsChecked = settings.UseGPU;
 
+        // Only keys stored here are shown. A key coming from an environment variable is
+        // reported in the label instead: loading it into the box would silently copy it
+        // into settings.json the next time the user pressed Save.
+        PwdAnthropic.Password = settings.AnthropicApiKey;
+        PwdElevenLabs.Password = settings.ElevenLabsApiKey;
+        TxtAnthropic.Text = PwdAnthropic.Password;
+        TxtElevenLabs.Text = PwdElevenLabs.Password;
+
+        DescribeKeySource(LblAnthropicSource, settings.AnthropicApiKeySource, "ANTHROPIC_API_KEY");
+        DescribeKeySource(LblElevenLabsSource, settings.ElevenLabsApiKeySource, "ELEVENLABS_API_KEY");
+
         TxtName.Text = settings.UserName;
         TxtRole.Text = settings.UserRole;
         TxtExpertise.Text = settings.UserExpertise;
@@ -68,10 +86,102 @@ public partial class SettingsWindow : Window
         ChkExcludeCapture.IsChecked = settings.ExcludeFromCapture;
     }
 
+    private static void DescribeKeySource(
+        System.Windows.Controls.TextBlock label, ApiKeySource source, string environmentVariable)
+    {
+        label.Text = source switch
+        {
+            ApiKeySource.Settings => "salva aqui",
+            ApiKeySource.Environment => $"vinda de {environmentVariable}",
+            _ => "nao configurada"
+        };
+    }
+
+    /// <summary>The key lives in the PasswordBox; the TextBox is only the reveal view of it.</summary>
+    private string AnthropicKeyInput =>
+        (ChkRevealKeys.IsChecked == true ? TxtAnthropic.Text : PwdAnthropic.Password).Trim();
+
+    private string ElevenLabsKeyInput =>
+        (ChkRevealKeys.IsChecked == true ? TxtElevenLabs.Text : PwdElevenLabs.Password).Trim();
+
+    /// <summary>
+    /// A PasswordBox cannot show its content, so revealing means swapping in a TextBox.
+    /// Both directions copy the value across, otherwise edits made in one view would be
+    /// lost when the user toggled back.
+    /// </summary>
+    private void RevealKeys_Changed(object sender, RoutedEventArgs e)
+    {
+        var revealed = ChkRevealKeys.IsChecked == true;
+
+        if (revealed)
+        {
+            TxtAnthropic.Text = PwdAnthropic.Password;
+            TxtElevenLabs.Text = PwdElevenLabs.Password;
+        }
+        else
+        {
+            PwdAnthropic.Password = TxtAnthropic.Text;
+            PwdElevenLabs.Password = TxtElevenLabs.Text;
+        }
+
+        TxtAnthropic.Visibility = revealed ? Visibility.Visible : Visibility.Collapsed;
+        TxtElevenLabs.Visibility = revealed ? Visibility.Visible : Visibility.Collapsed;
+        PwdAnthropic.Visibility = revealed ? Visibility.Collapsed : Visibility.Visible;
+        PwdElevenLabs.Visibility = revealed ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private async void BtnTestKeys_Click(object sender, RoutedEventArgs e)
+    {
+        BtnTestKeys.IsEnabled = false;
+        ShowKeyTestResult("Testando...", "TextSecondaryBrush");
+
+        try
+        {
+            using var validator = ValidatorFactory();
+
+            // An empty box is not an error here: it means "use the environment variable",
+            // so test whatever the app would actually end up using.
+            var anthropic = await validator.CheckAnthropicAsync(
+                Fallback(AnthropicKeyInput, "ANTHROPIC_API_KEY"));
+            var elevenLabs = await validator.CheckElevenLabsAsync(
+                Fallback(ElevenLabsKeyInput, "ELEVENLABS_API_KEY"));
+
+            var anyRejected = anthropic.Status == ApiKeyStatus.Rejected
+                || elevenLabs.Status == ApiKeyStatus.Rejected;
+
+            ShowKeyTestResult(
+                $"Anthropic: {anthropic.Message}\nElevenLabs: {elevenLabs.Message}",
+                anyRejected ? "DangerBrush" : "SuccessBrush");
+        }
+        finally
+        {
+            BtnTestKeys.IsEnabled = true;
+        }
+    }
+
+    private static string? Fallback(string typed, string environmentVariable) =>
+        string.IsNullOrWhiteSpace(typed) ? Environment.GetEnvironmentVariable(environmentVariable) : typed;
+
+    /// <summary>
+    /// Takes the colour from the theme rather than a static brush. A brush built in a
+    /// static field belongs to whichever thread ran the initializer, and WPF refuses to
+    /// use it from any other — which is exactly what happens across STA test cases.
+    /// </summary>
+    private void ShowKeyTestResult(string message, string brushKey)
+    {
+        LblKeyTestResult.Text = message;
+        LblKeyTestResult.Visibility = Visibility.Visible;
+
+        if (TryFindResource(brushKey) is Brush brush)
+            LblKeyTestResult.Foreground = brush;
+    }
+
     public AppSettings GetCurrentSettings()
     {
         return new AppSettings
         {
+            AnthropicApiKey = AnthropicKeyInput,
+            ElevenLabsApiKey = ElevenLabsKeyInput,
             SttProvider = CmbProvider.SelectedIndex == 1 ? "ElevenLabs" : "WhisperLocal",
             WhisperModelSize = CmbModelSize.SelectedIndex switch
             {

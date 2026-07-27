@@ -85,6 +85,59 @@
                     <CheckBox x:Name="ChkGpu" Content="Usar GPU (CUDA)"
                               Style="{StaticResource AppCheckBox}" Margin="2,18,0,0" />
 
+                    <TextBlock Text="CHAVES DE API" Style="{StaticResource SectionHeader}" />
+
+                    <TextBlock Style="{StaticResource Caption}" TextWrapping="Wrap" Margin="2,10,0,0"
+                               Text="Guardadas criptografadas nesta conta do Windows. Deixe em branco para usar a variavel de ambiente." />
+
+                    <Grid Margin="0,14,0,6">
+                        <TextBlock Text="ANTHROPIC (SUGESTOES)" Style="{StaticResource FieldLabel}"
+                                   Margin="2,0,0,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="LblAnthropicSource" Style="{StaticResource Caption}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    </Grid>
+                    <Grid>
+                        <PasswordBox x:Name="PwdAnthropic" Style="{StaticResource AppPasswordBox}" />
+                        <TextBox x:Name="TxtAnthropic" Style="{StaticResource AppTextBox}"
+                                 Margin="0" Visibility="Collapsed" />
+                    </Grid>
+
+                    <Grid Margin="0,14,0,6">
+                        <TextBlock Text="ELEVENLABS (TRANSCRICAO)" Style="{StaticResource FieldLabel}"
+                                   Margin="2,0,0,0" VerticalAlignment="Center" />
+                        <TextBlock x:Name="LblElevenLabsSource" Style="{StaticResource Caption}"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center" />
+                    </Grid>
+                    <Grid>
+                        <PasswordBox x:Name="PwdElevenLabs" Style="{StaticResource AppPasswordBox}" />
+                        <TextBox x:Name="TxtElevenLabs" Style="{StaticResource AppTextBox}"
+                                 Margin="0" Visibility="Collapsed" />
+                    </Grid>
+
+                    <!--
+                        Colunas, nao sobreposicao: o AppCheckBox usa um StackPanel de fundo
+                        transparente que ocupa toda a largura disponivel e engoliria os
+                        cliques do botao ao lado.
+                    -->
+                    <Grid Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <CheckBox x:Name="ChkRevealKeys" Grid.Column="0" Content="Mostrar chaves"
+                                  Style="{StaticResource AppCheckBox}" Margin="2,0,0,0"
+                                  HorizontalAlignment="Left" VerticalAlignment="Center"
+                                  Checked="RevealKeys_Changed" Unchecked="RevealKeys_Changed" />
+                        <Button x:Name="BtnTestKeys" Grid.Column="1"
+                                Style="{StaticResource SecondaryButton}"
+                                Content="Testar chaves" Width="140" Height="34"
+                                Click="BtnTestKeys_Click" />
+                    </Grid>
+
+                    <TextBlock x:Name="LblKeyTestResult" Style="{StaticResource Caption}"
+                               TextWrapping="Wrap" Margin="2,10,0,0" Visibility="Collapsed" />
+
                     <TextBlock Text="PERFIL" Style="{StaticResource SectionHeader}" />
 
                     <TextBlock Text="NOME" Style="{StaticResource FieldLabel}" Margin="2,12,0,6" />

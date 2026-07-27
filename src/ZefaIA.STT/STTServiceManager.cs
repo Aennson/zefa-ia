@@ -58,7 +58,7 @@ public sealed class STTServiceManager : IAsyncDisposable
     public async Task<ISTTProvider> CreateProviderAsync(CancellationToken ct = default)
     {
         var providerType = ParseProviderType(_settings.ActiveProvider);
-        var config = BuildConfig(providerType);
+        var config = BuildConfig(_settings, providerType);
 
         ValidateConfig(providerType, config);
 
@@ -88,30 +88,33 @@ public sealed class STTServiceManager : IAsyncDisposable
         return await InitializeActiveProviderAsync(ct);
     }
 
-    private STTProviderConfig BuildConfig(STTProviderType type)
+    internal static STTProviderConfig BuildConfig(STTSettings settings, STTProviderType type)
     {
         return type switch
         {
             STTProviderType.WhisperLocal => new STTProviderConfig
             {
                 ProviderType = STTProviderType.WhisperLocal,
-                Language = _settings.WhisperLocal.Language,
+                Language = settings.WhisperLocal.Language,
                 Options = new Dictionary<string, string>
                 {
-                    ["ModelSize"] = _settings.WhisperLocal.ModelSize,
-                    ["ModelPath"] = _settings.WhisperLocal.ModelPath,
-                    ["UseGPU"] = _settings.WhisperLocal.UseGPU.ToString(),
-                    ["BufferMs"] = _settings.WhisperLocal.BufferMs.ToString()
+                    ["ModelSize"] = settings.WhisperLocal.ModelSize,
+                    ["ModelPath"] = settings.WhisperLocal.ModelPath,
+                    ["UseGPU"] = settings.WhisperLocal.UseGPU.ToString(),
+                    ["BufferMs"] = settings.WhisperLocal.BufferMs.ToString()
                 }
             },
             STTProviderType.ElevenLabs => new STTProviderConfig
             {
                 ProviderType = STTProviderType.ElevenLabs,
-                Language = _settings.ElevenLabs.Language,
+                Language = settings.ElevenLabs.Language,
                 Options = new Dictionary<string, string>
                 {
-                    ["ApiKeyEnvVar"] = _settings.ElevenLabs.ApiKeyEnvVar,
-                    ["VadEnabled"] = _settings.ElevenLabs.VadEnabled.ToString()
+                    // Only set when the user configured a key in Settings; otherwise the
+                    // provider falls back to the environment variable.
+                    ["ApiKey"] = settings.ElevenLabs.ApiKey,
+                    ["ApiKeyEnvVar"] = settings.ElevenLabs.ApiKeyEnvVar,
+                    ["VadEnabled"] = settings.ElevenLabs.VadEnabled.ToString()
                 }
             },
             _ => throw new NotSupportedException($"Unknown provider type: {type}")
@@ -127,7 +130,7 @@ public sealed class STTServiceManager : IAsyncDisposable
             $"Invalid STT provider '{name}'. Valid options: {string.Join(", ", Enum.GetNames<STTProviderType>())}");
     }
 
-    private static void ValidateConfig(STTProviderType type, STTProviderConfig config)
+    internal static void ValidateConfig(STTProviderType type, STTProviderConfig config)
     {
         switch (type)
         {
@@ -140,9 +143,12 @@ public sealed class STTServiceManager : IAsyncDisposable
                 break;
 
             case STTProviderType.ElevenLabs:
+                // Either route to a key is fine; having neither is the misconfiguration.
+                var directKey = config.Options.GetValueOrDefault("ApiKey", "");
                 var envVar = config.Options.GetValueOrDefault("ApiKeyEnvVar", "");
-                if (string.IsNullOrWhiteSpace(envVar))
-                    throw new InvalidOperationException("ElevenLabs ApiKeyEnvVar must be specified.");
+                if (string.IsNullOrWhiteSpace(directKey) && string.IsNullOrWhiteSpace(envVar))
+                    throw new InvalidOperationException(
+                        "ElevenLabs needs an API key: set one in Settings or name an environment variable in ApiKeyEnvVar.");
                 break;
         }
     }

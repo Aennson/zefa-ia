@@ -17,12 +17,13 @@ namespace ZefaIA.App;
 public sealed class AppServices : IAsyncDisposable
 {
     public required ILoggerFactory LoggerFactory { get; init; }
-    public required AppSettings Settings { get; init; }
+    /// <summary>Replaced when the user saves the Settings window.</summary>
+    public required AppSettings Settings { get; set; }
     public required STTSettings SttSettings { get; init; }
     public required STTServiceManager SttManager { get; init; }
-    /// <summary>Null when no ANTHROPIC_API_KEY is configured — the app then runs
+    /// <summary>Null when no Anthropic API key is configured — the app then runs
     /// in transcribe-and-record mode with suggestions disabled.</summary>
-    public ILLMClient? LlmClient { get; init; }
+    public ILLMClient? LlmClient { get; internal set; }
 
     public bool IsLlmEnabled => LlmClient != null;
     public required IMeetingRepository Repository { get; init; }
