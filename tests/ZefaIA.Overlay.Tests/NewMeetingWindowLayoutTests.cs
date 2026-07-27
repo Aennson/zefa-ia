@@ -139,7 +139,7 @@ public class NewMeetingWindowLayoutTests
         };
 
         window.Show();
-        window.UpdateLayout();
+        LayoutSettled(window);
 
         try
         {
@@ -153,6 +153,18 @@ public class NewMeetingWindowLayoutTests
 
     private static IEnumerable<FrameworkElement> InteractiveElements(DependencyObject root) =>
         Descendants(root).Where(e => e is TextBox or Button);
+
+    /// <summary>
+    /// Waits for Loaded handlers and the layout pass to finish. UpdateLayout alone left
+    /// measurements occasionally unsettled when several windows ran back to back on the
+    /// same STA thread, which showed up as a test that passed alone and failed in a suite.
+    /// </summary>
+    internal static void LayoutSettled(Window window)
+    {
+        window.UpdateLayout();
+        window.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Loaded);
+        window.UpdateLayout();
+    }
 
     private static ScrollViewer? NearestScroller(DependencyObject element)
     {

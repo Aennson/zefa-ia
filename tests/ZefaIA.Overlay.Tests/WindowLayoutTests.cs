@@ -98,7 +98,7 @@ public class WindowLayoutTests
         window.ShowInTaskbar = false;
 
         window.Show();
-        window.UpdateLayout();
+        NewMeetingWindowLayoutTests.LayoutSettled(window);
 
         try { assert((FrameworkElement)window.Content); }
         finally { window.Close(); }

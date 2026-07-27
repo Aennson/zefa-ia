@@ -20,6 +20,42 @@ internal static partial class NativeMethods
     internal const int HTCLIENT = 1;
     internal const int HTCAPTION = 2;
 
+    // Resize regions returned from WM_NCHITTEST. A window with custom chrome gets no
+    // resize border for free, so it has to name these itself.
+    internal const int HTLEFT = 10;
+    internal const int HTRIGHT = 11;
+    internal const int HTTOP = 12;
+    internal const int HTTOPLEFT = 13;
+    internal const int HTTOPRIGHT = 14;
+    internal const int HTBOTTOM = 15;
+    internal const int HTBOTTOMLEFT = 16;
+    internal const int HTBOTTOMRIGHT = 17;
+
+    /// <summary>
+    /// Maps a point inside the window to the resize region it belongs to, or
+    /// <see cref="HTCLIENT"/> when it is not close enough to an edge.
+    /// Kept free of WPF types so the edge maths can be unit-tested directly.
+    /// </summary>
+    internal static int HitTestResizeBorder(
+        double x, double y, double width, double height, double border)
+    {
+        var left = x <= border;
+        var right = x >= width - border;
+        var top = y <= border;
+        var bottom = y >= height - border;
+
+        if (top && left) return HTTOPLEFT;
+        if (top && right) return HTTOPRIGHT;
+        if (bottom && left) return HTBOTTOMLEFT;
+        if (bottom && right) return HTBOTTOMRIGHT;
+        if (left) return HTLEFT;
+        if (right) return HTRIGHT;
+        if (top) return HTTOP;
+        if (bottom) return HTBOTTOM;
+
+        return HTCLIENT;
+    }
+
     [LibraryImport("user32.dll")]
     internal static partial int GetWindowLongW(IntPtr hWnd, int nIndex);
 

@@ -143,6 +143,59 @@ public class OverlayInteractionTests
         });
     }
 
+    // --- resizing ----------------------------------------------------------------
+
+    [WpfFact]
+    public void OverlayCanBeResized()
+    {
+        WithOverlay(w =>
+        {
+            Assert.Equal(ResizeMode.CanResize, w.ResizeMode);
+
+            w.Width = 700;
+            w.Height = 560;
+            NewMeetingWindowLayoutTests.LayoutSettled(w);
+
+            Assert.Equal(700, w.ActualWidth);
+            Assert.Equal(560, w.ActualHeight);
+        });
+    }
+
+    [WpfFact]
+    public void ResizingIsBounded()
+    {
+        WithOverlay(w =>
+        {
+            // A window that can be dragged down to nothing, or past the screen, is worse
+            // than one that cannot be resized at all.
+            Assert.True(w.MinWidth >= 200 && w.MinHeight >= 150);
+            Assert.True(w.MaxWidth > w.MinWidth && w.MaxHeight > w.MinHeight);
+        });
+    }
+
+    [Theory]
+    // corners
+    [InlineData(2, 2, 13)]        // HTTOPLEFT
+    [InlineData(398, 2, 14)]      // HTTOPRIGHT
+    [InlineData(2, 298, 16)]      // HTBOTTOMLEFT
+    [InlineData(398, 298, 17)]    // HTBOTTOMRIGHT
+    // edges
+    [InlineData(2, 150, 10)]      // HTLEFT
+    [InlineData(398, 150, 11)]    // HTRIGHT
+    [InlineData(200, 2, 12)]      // HTTOP
+    [InlineData(200, 298, 15)]    // HTBOTTOM
+    // interior stays interactive
+    [InlineData(200, 150, 1)]     // HTCLIENT
+    [InlineData(60, 40, 1)]       // over the title bar buttons
+    public void EdgesReportResizeRegionsAndTheInteriorDoesNot(
+        double x, double y, int expected)
+    {
+        var region = ZefaIA.Overlay.NativeMethods.HitTestResizeBorder(
+            x, y, width: 400, height: 300, border: 8);
+
+        Assert.Equal(expected, region);
+    }
+
     private static IntPtr Handle(Window w) => new WindowInteropHelper(w).Handle;
 
     private static void WithOverlay(Action<OverlayWindow> assert)
@@ -155,7 +208,7 @@ public class OverlayInteractionTests
         };
 
         w.Show();
-        w.UpdateLayout();
+        NewMeetingWindowLayoutTests.LayoutSettled(w);
 
         try { assert(w); }
         finally { w.Close(); }

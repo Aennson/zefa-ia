@@ -7,8 +7,9 @@
         Topmost="True"
         ShowInTaskbar="False"
         Width="440" Height="380"
-        MinWidth="320" MinHeight="220"
-        ResizeMode="NoResize"
+        MinWidth="300" MinHeight="200"
+        MaxWidth="1000" MaxHeight="900"
+        ResizeMode="CanResize"
         WindowStartupLocation="Manual"
         FontFamily="{DynamicResource AppFont}">
 
@@ -108,6 +109,17 @@
                 <RadioButton x:Name="TabSuggestions" Style="{StaticResource OverlayTab}"
                              Content="Sugestoes" Checked="Tab_Checked" />
             </StackPanel>
+
+            <!--
+                Alca de redimensionamento: a borda arrastavel existe nos quatro lados
+                (ver OnWindowMessage), mas sem uma marca visivel ninguem descobre que da
+                para redimensionar uma janela sem moldura.
+            -->
+            <Path Grid.Row="2" Width="12" Height="12" Margin="0,0,6,6"
+                  HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                  Stroke="{StaticResource TextMutedBrush}" StrokeThickness="1.4"
+                  IsHitTestVisible="False" Panel.ZIndex="10"
+                  Data="M 11,1 L 1,11 M 11,5 L 5,11 M 11,9 L 9,11" />
 
             <!-- Conteudo -->
             <Grid Grid.Row="2" Margin="14,12,10,14">

@@ -52,6 +52,10 @@ public partial class OverlayWindow : Window
         NativeMethods.ApplyOverlayStyles(_hwnd);
         NativeMethods.SetClickThrough(_hwnd, _clickThroughEnabled);
 
+        // WindowStyle="None" removes the frame Windows would normally resize by, so the
+        // window has to answer WM_NCHITTEST itself to get grabbable edges back.
+        HwndSource.FromHwnd(_hwnd)?.AddHook(OnWindowMessage);
+
         ApplySettings();
         PositionWindow();
     }
@@ -220,6 +224,35 @@ public partial class OverlayWindow : Window
     #endregion
 
     #region Event Handlers
+
+    /// <summary>
+    /// Width of the grab band along each edge, in device-independent pixels. The frame
+    /// Windows gives a normal window is about 4px and is already fiddly; a translucent
+    /// overlay with rounded corners needs more room to aim at.
+    /// </summary>
+    private const double ResizeBorderThickness = 8;
+
+    private IntPtr OnWindowMessage(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg != NativeMethods.WM_NCHITTEST) return IntPtr.Zero;
+
+        // While click-through is on the window gets no mouse messages at all, so this
+        // never runs then — but resizing a window you cannot click would make no sense.
+        if (_clickThroughEnabled) return IntPtr.Zero;
+
+        // lParam packs the cursor's screen position as two signed 16-bit values.
+        var screen = new Point((short)((long)lParam & 0xFFFF), (short)(((long)lParam >> 16) & 0xFFFF));
+        var local = PointFromScreen(screen);
+
+        var region = NativeMethods.HitTestResizeBorder(
+            local.X, local.Y, ActualWidth, ActualHeight, ResizeBorderThickness);
+
+        // Anything not on an edge falls through to WPF, so buttons and tabs keep working.
+        if (region == NativeMethods.HTCLIENT) return IntPtr.Zero;
+
+        handled = true;
+        return new IntPtr(region);
+    }
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
