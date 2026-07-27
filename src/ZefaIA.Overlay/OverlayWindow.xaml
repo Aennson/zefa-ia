@@ -6,121 +6,111 @@
         WindowStyle="None"
         Topmost="True"
         ShowInTaskbar="False"
-        Width="420" Height="360"
-        MinWidth="300" MinHeight="200"
+        Width="440" Height="380"
+        MinWidth="320" MinHeight="220"
         ResizeMode="NoResize"
-        WindowStartupLocation="Manual">
+        WindowStartupLocation="Manual"
+        FontFamily="{DynamicResource AppFont}">
 
     <Window.Resources>
-        <Style x:Key="ControlButton" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#99FFFFFF"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Width" Value="28"/>
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                CornerRadius="4" Padding="4">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#33FFFFFF"/>
-                                <Setter Property="Foreground" Value="#FFFFFF"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#55FFFFFF"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ZefaIA.Overlay;component/Themes/ZefaTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
 
-        <Style x:Key="TabButton" TargetType="RadioButton">
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="Foreground" Value="#88FFFFFF"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                                CornerRadius="6,6,0,0" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#22FFFFFF"/>
-                                <Setter Property="Foreground" Value="#FFFFFF"/>
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#15FFFFFF"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+            <!-- Botao de icone compacto para a barra do overlay. -->
+            <Style x:Key="OverlayIconButton" TargetType="Button" BasedOn="{StaticResource IconButton}">
+                <Setter Property="Width" Value="30" />
+                <Setter Property="Height" Value="30" />
+                <Setter Property="FontSize" Value="14" />
+            </Style>
+
+            <!-- Aba: mesma linguagem dos chips da tela de nova reuniao. -->
+            <Style x:Key="OverlayTab" TargetType="RadioButton">
+                <Setter Property="Height" Value="30" />
+                <Setter Property="Padding" Value="16,0" />
+                <Setter Property="Margin" Value="0,0,8,0" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="RadioButton">
+                            <Border x:Name="bd" Background="{StaticResource BgBaseBrush}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                    CornerRadius="{StaticResource CornerPill}"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="{StaticResource CardHoverBrush}" />
+                                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                </Trigger>
+                                <Trigger Property="IsChecked" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="{StaticResource AccentGradientBrush}" />
+                                    <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                    <Setter Property="Foreground" Value="White" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
-    <Border x:Name="RootBorder" Background="#DD1A1A2E" CornerRadius="12"
-            BorderBrush="#33FFFFFF" BorderThickness="1">
+    <Border x:Name="RootBorder" Background="{StaticResource BgLayerBrush}" CornerRadius="16"
+            BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="24" ShadowDepth="6" Opacity="0.5" Color="Black" />
+        </Border.Effect>
+
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="36"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Title bar with controls -->
-            <Border x:Name="TitleBar" Grid.Row="0" Background="#22FFFFFF"
-                    CornerRadius="12,12,0,0" Padding="8,0"
-                    MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
+            <!-- Barra de titulo (arrasta a janela) -->
+            <Grid x:Name="TitleBar" Grid.Row="0" Background="Transparent" Margin="14,10,10,0"
+                  MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Width="22" Height="22" CornerRadius="7"
+                            Background="{StaticResource AccentGradientBrush}">
+                        <TextBlock Text="&#xE720;" Style="{StaticResource Glyph}"
+                                   FontSize="11" Foreground="White" />
+                    </Border>
+                    <TextBlock Text="Zefa IA" Margin="10,0,0,0" VerticalAlignment="Center"
+                               FontSize="13" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextPrimaryBrush}" />
+                </StackPanel>
 
-                    <TextBlock Grid.Column="0" Text="Zefa IA"
-                               Foreground="#CCFFFFFF" FontSize="12" FontWeight="SemiBold"
-                               VerticalAlignment="Center" Margin="4,0"/>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="BtnPin" Style="{StaticResource OverlayIconButton}"
+                            Content="&#xE718;" Opacity="0.6" ToolTip="Fixar (impede o auto-ocultar)"
+                            Click="BtnPin_Click" />
+                    <Button x:Name="BtnCopy" Style="{StaticResource OverlayIconButton}"
+                            Content="&#xE8C8;" ToolTip="Copiar o conteudo da aba atual"
+                            Click="BtnCopy_Click" />
+                    <Button x:Name="BtnDismiss" Style="{StaticResource OverlayIconButton}"
+                            Content="&#xE711;" ToolTip="Ocultar"
+                            Click="BtnDismiss_Click" />
+                </StackPanel>
+            </Grid>
 
-                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,2,0">
-                        <Button x:Name="BtnPin" Style="{StaticResource ControlButton}"
-                                Content="&#x1F4CC;" ToolTip="Fixar"
-                                Click="BtnPin_Click"/>
-                        <Button x:Name="BtnCopy" Style="{StaticResource ControlButton}"
-                                Content="&#x1F4CB;" ToolTip="Copiar"
-                                Click="BtnCopy_Click"/>
-                        <Button x:Name="BtnDismiss" Style="{StaticResource ControlButton}"
-                                Content="&#x2715;" ToolTip="Ocultar"
-                                Click="BtnDismiss_Click"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
-
-            <!-- Tab bar -->
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="8,0,8,0">
-                <RadioButton x:Name="TabTranscription" Style="{StaticResource TabButton}"
-                             Content="Transcricao" IsChecked="True"
-                             Checked="Tab_Checked"/>
-                <RadioButton x:Name="TabSuggestions" Style="{StaticResource TabButton}"
-                             Content="Sugestoes"
-                             Checked="Tab_Checked"/>
+            <!-- Abas -->
+            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="14,12,14,0">
+                <RadioButton x:Name="TabTranscription" Style="{StaticResource OverlayTab}"
+                             Content="Transcricao" IsChecked="True" Checked="Tab_Checked" />
+                <RadioButton x:Name="TabSuggestions" Style="{StaticResource OverlayTab}"
+                             Content="Sugestoes" Checked="Tab_Checked" />
             </StackPanel>
 
-            <!-- Content area -->
-            <Grid Grid.Row="2" Margin="8,4,8,8">
-                <!-- Transcription panel -->
+            <!-- Conteudo -->
+            <Grid Grid.Row="2" Margin="14,12,10,14">
                 <ScrollViewer x:Name="TranscriptionScroller"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled"
@@ -128,69 +118,75 @@
                     <ItemsControl x:Name="TranscriptionList">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <StackPanel Margin="0,2">
+                                <StackPanel Margin="0,0,0,10">
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="{Binding Timestamp}"
-                                                   Foreground="#66FFFFFF" FontSize="10" Margin="0,0,6,0"/>
+                                                   Foreground="{StaticResource TextMutedBrush}"
+                                                   FontSize="10" Margin="0,0,8,0" VerticalAlignment="Center" />
                                         <TextBlock Text="{Binding SpeakerName}"
-                                                   Foreground="{Binding SpeakerColor}" FontSize="11"
-                                                   FontWeight="SemiBold"/>
+                                                   Foreground="{Binding SpeakerColor}"
+                                                   FontSize="11" FontWeight="SemiBold" />
                                     </StackPanel>
                                     <TextBlock Text="{Binding Text}"
                                                Foreground="{Binding TextColor}"
                                                FontStyle="{Binding FontStyle}"
-                                               FontSize="13" TextWrapping="Wrap"
-                                               Margin="0,1,0,0"/>
+                                               FontSize="13" TextWrapping="Wrap" Margin="0,3,0,0" />
                                 </StackPanel>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
 
-                <!-- Suggestions panel -->
                 <Grid x:Name="SuggestionsPanel" Visibility="Collapsed">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-
                     <ScrollViewer VerticalScrollBarVisibility="Auto"
                                   HorizontalScrollBarVisibility="Disabled"
                                   Background="Transparent">
                         <StackPanel>
-                            <!-- Thinking indicator -->
                             <StackPanel x:Name="ThinkingIndicator" Orientation="Horizontal"
-                                        Margin="0,8" Visibility="Collapsed">
-                                <Ellipse Width="6" Height="6" Fill="#7C3AED" Margin="0,0,4,0"/>
-                                <TextBlock Text="Pensando..." Foreground="#7C3AED"
-                                           FontSize="12" FontStyle="Italic"/>
+                                        Margin="2,4,0,8" Visibility="Collapsed">
+                                <Ellipse Width="7" Height="7" Margin="0,0,8,0"
+                                         Fill="{StaticResource AccentBrush}">
+                                    <Ellipse.Triggers>
+                                        <EventTrigger RoutedEvent="Loaded">
+                                            <BeginStoryboard>
+                                                <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                                     From="1" To="0.2" Duration="0:0:0.7" />
+                                                </Storyboard>
+                                            </BeginStoryboard>
+                                        </EventTrigger>
+                                    </Ellipse.Triggers>
+                                </Ellipse>
+                                <TextBlock Text="Pensando..." Foreground="{StaticResource AccentBrush}"
+                                           FontSize="12" VerticalAlignment="Center" />
                             </StackPanel>
 
-                            <!-- Current suggestion -->
-                            <Border x:Name="CurrentSuggestionBorder"
-                                    Background="#15A78BFA" CornerRadius="8"
-                                    Padding="12,8" Margin="0,4"
+                            <Border x:Name="CurrentSuggestionBorder" CornerRadius="10"
+                                    Background="#231F3A" BorderBrush="{StaticResource AccentBrush}"
+                                    BorderThickness="1" Padding="14,11" Margin="0,0,0,10"
                                     Visibility="Collapsed">
                                 <StackPanel>
-                                    <TextBlock Text="Sugestao" Foreground="#A78BFA"
-                                               FontSize="11" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                                    <TextBlock Text="SUGESTAO" Foreground="{StaticResource AccentBrush}"
+                                               FontSize="10" FontWeight="SemiBold" Margin="0,0,0,6" />
                                     <TextBlock x:Name="CurrentSuggestionText"
-                                               Foreground="#EEEEFF" FontSize="13"
-                                               TextWrapping="Wrap"/>
+                                               Foreground="{StaticResource TextPrimaryBrush}"
+                                               FontSize="13" TextWrapping="Wrap" />
                                 </StackPanel>
                             </Border>
 
-                            <!-- Suggestion history -->
                             <ItemsControl x:Name="SuggestionHistory">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Border Background="#0AFFFFFF" CornerRadius="6"
-                                                Padding="10,6" Margin="0,2">
+                                        <Border Background="{StaticResource CardBrush}" CornerRadius="9"
+                                                BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                                Padding="12,9" Margin="0,0,0,7">
                                             <StackPanel>
                                                 <TextBlock Text="{Binding Timestamp}"
-                                                           Foreground="#55FFFFFF" FontSize="10"/>
+                                                           Foreground="{StaticResource TextMutedBrush}"
+                                                           FontSize="10" Margin="0,0,0,3" />
                                                 <TextBlock Text="{Binding Text}"
-                                                           Foreground="#AAFFFFFF" FontSize="12"
-                                                           TextWrapping="Wrap"/>
+                                                           Foreground="{StaticResource TextSecondaryBrush}"
+                                                           FontSize="12" TextWrapping="Wrap" />
                                             </StackPanel>
                                         </Border>
                                     </DataTemplate>

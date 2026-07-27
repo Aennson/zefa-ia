@@ -30,19 +30,38 @@ internal static partial class NativeMethods
     [return: MarshalAs(UnmanagedType.Bool)]
     internal static partial bool SetWindowDisplayAffinity(IntPtr hWnd, uint dwAffinity);
 
-    internal static void MakeClickThrough(IntPtr hwnd)
+    /// <summary>
+    /// Styles that make this behave like an overlay rather than an app window: layered so
+    /// it can be translucent, tool-window so it stays out of Alt+Tab and the taskbar, and
+    /// no-activate so clicking it never steals focus from the meeting app.
+    ///
+    /// Deliberately excludes WS_EX_TRANSPARENT. These four used to be applied together,
+    /// and that one style makes the window ignore every mouse message — the tabs, the
+    /// buttons and even dragging were dead, with nothing in the UI able to turn it off.
+    /// </summary>
+    internal static void ApplyOverlayStyles(IntPtr hwnd)
     {
         var style = GetWindowLongW(hwnd, GWL_EXSTYLE);
         SetWindowLongW(hwnd, GWL_EXSTYLE,
-            style | WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+            style | WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
     }
 
-    internal static void RemoveClickThrough(IntPtr hwnd)
+    /// <summary>
+    /// Toggles click-through ("ghost mode"): the overlay stays visible but every click
+    /// lands on whatever is behind it. All-or-nothing per window — Windows cannot make
+    /// only part of a window transparent to the mouse.
+    /// </summary>
+    internal static void SetClickThrough(IntPtr hwnd, bool enabled)
     {
         var style = GetWindowLongW(hwnd, GWL_EXSTYLE);
-        SetWindowLongW(hwnd, GWL_EXSTYLE,
-            style & ~WS_EX_TRANSPARENT);
+
+        SetWindowLongW(hwnd, GWL_EXSTYLE, enabled
+            ? style | WS_EX_TRANSPARENT
+            : style & ~WS_EX_TRANSPARENT);
     }
+
+    internal static bool IsClickThrough(IntPtr hwnd) =>
+        (GetWindowLongW(hwnd, GWL_EXSTYLE) & WS_EX_TRANSPARENT) != 0;
 
     internal static bool ExcludeFromCapture(IntPtr hwnd)
     {

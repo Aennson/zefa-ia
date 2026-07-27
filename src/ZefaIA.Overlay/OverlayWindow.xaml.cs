@@ -13,7 +13,10 @@ public partial class OverlayWindow : Window
     private IntPtr _hwnd;
     private bool _isPinned;
     private bool _isExcludedFromCapture = true;
-    private bool _clickThroughEnabled = true;
+
+    // Interactive by default. This used to start as true, which applied
+    // WS_EX_TRANSPARENT and made the whole overlay unclickable with no way to undo it.
+    private bool _clickThroughEnabled;
     private readonly DispatcherTimer? _autoHideTimer;
     private readonly ObservableCollection<TranscriptionDisplayItem> _transcriptionItems = new();
     private readonly ObservableCollection<SuggestionDisplayItem> _suggestionItems = new();
@@ -46,11 +49,8 @@ public partial class OverlayWindow : Window
     {
         _hwnd = new WindowInteropHelper(this).Handle;
 
-        if (_clickThroughEnabled)
-            NativeMethods.MakeClickThrough(_hwnd);
-
-        if (_isExcludedFromCapture)
-            NativeMethods.ExcludeFromCapture(_hwnd);
+        NativeMethods.ApplyOverlayStyles(_hwnd);
+        NativeMethods.SetClickThrough(_hwnd, _clickThroughEnabled);
 
         ApplySettings();
         PositionWindow();
@@ -60,6 +60,10 @@ public partial class OverlayWindow : Window
     {
         RootBorder.Opacity = Settings.Opacity;
         UpdateFontSize(Settings.FontSize);
+
+        // Previously ignored: the window kept its own default and the user's choice in
+        // Settings never reached the window, so the checkbox did nothing.
+        SetExcludeFromCapture(Settings.ExcludeFromCapture);
 
         if (Settings.AutoHideSeconds > 0)
         {
@@ -182,16 +186,21 @@ public partial class OverlayWindow : Window
             NativeMethods.IncludeInCapture(_hwnd);
     }
 
+    public bool IsClickThrough => _clickThroughEnabled;
+
+    /// <summary>
+    /// Click-through is all-or-nothing per window, so while it is on nothing on the
+    /// overlay can be clicked — including any control that would turn it back off.
+    /// Kept as API rather than a button for exactly that reason: whatever switches it on
+    /// has to live outside the overlay (the tray menu or a global hotkey).
+    /// </summary>
     public void SetClickThrough(bool enabled)
     {
         _clickThroughEnabled = enabled;
 
         if (_hwnd == IntPtr.Zero) return;
 
-        if (enabled)
-            NativeMethods.MakeClickThrough(_hwnd);
-        else
-            NativeMethods.RemoveClickThrough(_hwnd);
+        NativeMethods.SetClickThrough(_hwnd, enabled);
     }
 
     public string GetVisibleText()
@@ -214,13 +223,11 @@ public partial class OverlayWindow : Window
 
     private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (_hwnd != IntPtr.Zero)
-            NativeMethods.RemoveClickThrough(_hwnd);
-
-        DragMove();
-
-        if (_clickThroughEnabled && _hwnd != IntPtr.Zero)
-            NativeMethods.MakeClickThrough(_hwnd);
+        // No need to juggle click-through here any more: while it is on this handler
+        // never runs, because the window receives no mouse messages at all. The old
+        // toggle-drag-restore dance could not have worked for that same reason.
+        if (e.ButtonState == MouseButtonState.Pressed)
+            DragMove();
     }
 
     private void BtnPin_Click(object sender, RoutedEventArgs e)
