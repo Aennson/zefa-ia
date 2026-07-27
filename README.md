@@ -17,26 +17,41 @@ Assistente de reunioes em tempo real para Windows. Captura audio dual (microfone
 2. **Echo cancellation** — Filtro adaptativo NLMS remove eco do loopback que vaza no microfone
 3. **Transcricao** — Whisper local (whisper.net) ou ElevenLabs Scribe v2 (WebSocket), plugaveis via interface
 4. **Diarizacao** — Mic = "Eu", Loopback = "Interlocutor" (sem ML, baseado na origem do stream)
-5. **Sugestoes** — Claude API com prompt caching, trigger por silencio (~1.5s) ou hotkey
-6. **Overlay** — WPF topmost com click-through, excluido de captura de tela (`WDA_EXCLUDEFROMCAPTURE`)
+5. **Sugestoes** — Claude API com prompt caching, sob demanda por `Ctrl+Shift+Space` ou automaticamente apos silencio
+6. **Overlay** — WPF topmost, clicavel e redimensionavel, excluido de captura de tela (`WDA_EXCLUDEFROMCAPTURE`)
 
 ## Requisitos
 
 ### Sistema
 
 - Windows 10 1903+ (necessario para WASAPI loopback e `SetWindowDisplayAffinity`)
-- .NET 8 SDK ([download](https://dotnet.microsoft.com/download/dotnet/8.0))
+- **Visual C++ 2015-2022 Redistributable (x64)** — as DLLs nativas do Whisper sao compiladas com MSVC e nao carregam sem ele:
+  ```powershell
+  winget install Microsoft.VCRedist.2015+.x64
+  ```
+- .NET 8 SDK apenas para compilar ([download](https://dotnet.microsoft.com/download/dotnet/8.0)) — o app publicado e self-contained
 
 ### API Keys (opcionais)
 
-| Servico | Variavel de Ambiente | Quando |
-|---------|---------------------|--------|
+| Servico | Variavel de Ambiente | Para que serve |
+|---------|---------------------|----------------|
 | Claude (Anthropic) | `ANTHROPIC_API_KEY` | Sugestoes via LLM |
 | ElevenLabs | `ELEVENLABS_API_KEY` | STT alternativo ao Whisper local |
+
+> **ElevenLabs e STT, nao LLM.** Ela substitui o Whisper na transcricao; quem gera
+> as sugestoes e sempre o Claude. Configurar ElevenLabs sem `ANTHROPIC_API_KEY`
+> melhora a transcricao mas nao liga as sugestoes.
 
 > O Whisper local funciona **sem nenhuma API key** — roda 100% offline.
 > Sem `ANTHROPIC_API_KEY` o app inicia normalmente em modo so-transcricao:
 > grava, salva no historico e exporta; apenas as sugestoes ficam desligadas.
+
+O app le as chaves **apenas de variaveis de ambiente**. Como ele roda na bandeja,
+defina no nivel do usuario para que valham ao abrir pelo Explorer:
+
+```powershell
+[Environment]::SetEnvironmentVariable("ANTHROPIC_API_KEY", "sk-ant-...", "User")
+```
 
 ## Uso
 
@@ -56,11 +71,14 @@ cd zefa-ia
 # Compilar
 dotnet build
 
-# Rodar testes (457 testes, os de hardware sao Skip automaticamente)
+# Rodar testes (525 no total; 6 sao opt-in por variavel de ambiente)
 dotnet test
 
 # Executar
 dotnet run --project src/ZefaIA.App
+
+# Publicar (self-contained, single-file)
+dotnet publish src/ZefaIA.App -c Release -p:PublishProfile=win-x64
 
 # Gerar o instalador (requer Inno Setup 6)
 pwsh installer/build-installer.ps1
@@ -68,8 +86,16 @@ pwsh installer/build-installer.ps1
 
 ### Modelo Whisper
 
-Na primeira execucao com STT Whisper, o modelo sera baixado automaticamente (~142MB para `base`).
-O download acontece em `./models/` e pode ser configurado em `appsettings.json`.
+Na primeira reuniao com STT Whisper, o modelo e baixado automaticamente (~142MB para `base`),
+**sem barra de progresso** — a primeira reuniao demora alguns minutos.
+
+O modelo vai para `<pasta do executavel>/models`, com fallback para
+`%LOCALAPPDATA%\ZefaIA\models` quando a pasta de instalacao e somente-leitura.
+Caminhos relativos em `appsettings.json` resolvem a partir do executavel, nao do
+diretorio de trabalho — abrir o `.exe` por caminho completo de outra pasta nao
+faz o modelo ser baixado de novo.
+
+Para evitar a espera, coloque um `ggml-<modelo>.bin` ja baixado nessa pasta antes da primeira reuniao.
 
 Modelos disponiveis:
 
@@ -86,27 +112,30 @@ Modelos disponiveis:
 zefa-ia/
 ├── ZefaIA.sln
 ├── src/
-│   ├── ZefaIA.Core/           # Interfaces, models, eventos (domain)
+│   ├── ZefaIA.Core/           # Interfaces, models, eventos, triggers (domain)
 │   ├── ZefaIA.Audio/          # Captura NAudio, resampling, AEC, pipeline Rx
 │   ├── ZefaIA.STT/            # Providers de STT (Whisper, ElevenLabs)
-│   ├── ZefaIA.LLM/            # Cliente LLM (Claude API)
-│   ├── ZefaIA.Overlay/        # Janela overlay WPF
+│   ├── ZefaIA.LLM/            # Cliente LLM (Claude API), prompt, orquestracao
+│   ├── ZefaIA.Overlay/        # Janelas WPF e tema visual (Themes/)
 │   ├── ZefaIA.Persistence/    # SQLite, recorder de reuniao, exportacao
 │   └── ZefaIA.App/            # Orquestracao, system tray, bootstrap, crash reports
 ├── tests/
 │   ├── ZefaIA.Audio.Tests/       # 44 testes de audio
-│   ├── ZefaIA.STT.Tests/         # 82 testes de STT e deteccao de idioma
-│   ├── ZefaIA.Overlay.Tests/     # 44 testes de overlay, settings e historico
-│   ├── ZefaIA.LLM.Tests/         # 82 testes de LLM, triggers e orquestracao
+│   ├── ZefaIA.STT.Tests/         # 90 testes de STT, idioma e caminho do modelo
+│   ├── ZefaIA.Overlay.Tests/     # 73 testes de overlay, layout, settings e historico
+│   ├── ZefaIA.LLM.Tests/         # 88 testes de LLM, triggers e orquestracao
 │   ├── ZefaIA.Persistence.Tests/ # 73 testes de SQLite, recorder e export
 │   ├── ZefaIA.App.Tests/         # 132 testes de orquestracao e resiliencia
-│   └── ZefaIA.Integration.Tests/
+│   └── ZefaIA.Integration.Tests/ #  25 testes ponta a ponta do pipeline
 ├── installer/                 # Script Inno Setup e build do instalador
 └── docs/
     ├── PROJECT-SPEC.md        # Especificacao completa
     ├── USAGE.md               # Guia de uso e troubleshooting
     ├── sprint-1/ a sprint-6/  # Plano de sprints e tasks
-    └── tests/                 # Documentacao de cada teste
+    └── tests/
+        ├── E2E-COVERAGE.md    # Cobertura ponta a ponta e lacunas conhecidas
+        ├── WINDOWS-TEST-RUN.md# Primeira execucao real em Windows e defeitos achados
+        └── sprint-1/ a sprint-6/
 ```
 
 ## Configuracao
@@ -115,11 +144,7 @@ Edite `src/ZefaIA.App/appsettings.json`:
 
 ```json
 {
-  "Audio": {
-    "BufferSizeMs": 100,
-    "SampleRate": 16000,
-    "Channels": 1
-  },
+  "Audio": { "BufferSizeMs": 100, "SampleRate": 16000, "Channels": 1 },
   "STT": {
     "ActiveProvider": "WhisperLocal",
     "WhisperLocal": {
@@ -128,32 +153,26 @@ Edite `src/ZefaIA.App/appsettings.json`:
       "UseGPU": false,
       "ModelPath": "./models"
     },
-    "ElevenLabs": {
-      "ApiKeyEnvVar": "ELEVENLABS_API_KEY",
-      "Language": "auto"
-    }
+    "ElevenLabs": { "ApiKeyEnvVar": "ELEVENLABS_API_KEY", "Language": "auto" }
   },
-  "LLM": {
-    "ModelId": "claude-sonnet-4-20250514",
-    "MaxTokens": 512,
-    "Temperature": 0.7
-  },
-  "Triggers": {
-    "SilenceThresholdMs": 1500,
-    "CooldownMs": 10000,
-    "MaxRequestsPerMinute": 4
-  },
-  "Overlay": {
-    "Opacity": 0.85,
-    "FontSize": 14,
-    "Position": "BottomRight"
-  }
+  "Triggers": { "SilenceThresholdMs": 1500, "CooldownMs": 10000, "MaxRequestsPerMinute": 4 },
+  "Overlay": { "Opacity": 0.85, "FontSize": 14, "Position": "BottomRight" }
 }
 ```
 
+> A secao `LLM` do `appsettings.json` **nao e lida por ninguem** hoje:
+> o `MeetingOrchestrator` monta o `LLMSessionConfig` a partir dos defaults do
+> record em `ZefaIA.Core/Models/LLMModels.cs` (`claude-sonnet-5`, 1024 tokens).
+> Os valores estao sincronizados para nao enganar, mas editar o arquivo nao muda
+> nada ate a ligacao ser feita. Ver [`docs/tests/E2E-COVERAGE.md`](docs/tests/E2E-COVERAGE.md).
+
+O que a tela de **Configuracoes** grava (`%APPDATA%\ZefaIA\settings.json`) tem
+precedencia sobre o `appsettings.json` para provedor de STT, modelo, idioma,
+perfil do usuario e overlay.
+
 ### Trocar provider de STT
 
-Altere `STT.ActiveProvider` para `"WhisperLocal"` ou `"ElevenLabs"`. O hot-swap tambem pode ser feito em runtime sem reiniciar o app.
+Configuracoes → **Provedor** → `Whisper Local` ou `ElevenLabs`. Vale a partir da proxima reuniao.
 
 ## Dados das Reunioes
 
@@ -178,9 +197,9 @@ Antes de deletar, e possivel exportar a reuniao em TXT (transcricao legivel com 
 | Audio | NAudio | 2.2.1 |
 | Streams reativos | System.Reactive | 6.0.1 |
 | STT local | Whisper.net | 1.7.3 |
-| STT cloud | ElevenLabs Scribe v2 | WebSocket |
-| LLM | Claude API (Anthropic) | - |
-| Testes | xUnit + Moq | 2.9.2 / 4.20.72 |
+| STT cloud | ElevenLabs Scribe v2 Realtime | WebSocket |
+| LLM | Claude API (`claude-sonnet-5`) | - |
+| Testes | xUnit + Moq + Xunit.StaFact | 2.9.2 / 4.20.72 |
 | Persistencia | Microsoft.Data.Sqlite | 8.0.8 |
 
 ## Roadmap (Sprints)
@@ -193,6 +212,7 @@ Antes de deletar, e possivel exportar a reuniao em TXT (transcricao legivel com 
 | 4 | Integracao LLM | Concluido |
 | 5 | Persistencia e Config | Concluido |
 | 6 | Integracao e Polish | Concluido |
+| — | Validacao real em Windows | Concluido |
 
 ### Sprint 1 — Captura de Audio
 Captura dual (mic + loopback), resampling automatico (48kHz float32 stereo → 16kHz int16 mono), echo cancellation com filtro NLMS, pipeline reativo com System.Reactive, e exportacao WAV para debug.
@@ -201,7 +221,7 @@ Captura dual (mic + loopback), resampling automatico (48kHz float32 stereo → 1
 Whisper local via whisper.net com buffer de audio e VAD, ElevenLabs via WebSocket com reconnection automatica, TranscriptionEngine conectando streams ao STT, diarizacao por stream (mic="Eu", loopback="Interlocutor"), factory com hot-swap de providers.
 
 ### Sprint 3 — Overlay WPF
-Janela topmost click-through com `WS_EX_TRANSPARENT`/`WS_EX_LAYERED`, excluida de captura via `SetWindowDisplayAffinity`, mini controles (copiar, fixar, dispensar) com hit-testing seletivo, display de transcricao live com ObservableCollection, area de sugestoes com streaming de markdown, SimpleMarkdownParser (bold/italic/listas → WPF Inlines), Settings UI completa (STT, perfil, overlay), AppSettings com persistencia JSON.
+Janela topmost excluida de captura via `SetWindowDisplayAffinity`, mini controles (copiar, fixar, dispensar), display de transcricao live com ObservableCollection, area de sugestoes com streaming de markdown, SimpleMarkdownParser (bold/italic/listas → WPF Inlines), Settings UI completa (STT, perfil, overlay), AppSettings com persistencia JSON.
 
 ### Sprint 4 — Integracao LLM
 ClaudeLLMClient com SSE streaming e prompt caching (`cache_control` ephemeral), retry com backoff em 429/500, PromptBuilder com perfil do usuario e contexto de reuniao, SilenceTrigger com deteccao RMS e cooldown, HotkeyTrigger global via Win32 `RegisterHotKey`, SuggestionStreamPipeline com maquina de estados e filtragem de `[SEM SUGESTAO]`, SuggestionOrchestrator com rate limiting e deduplicacao.
@@ -212,7 +232,8 @@ Persistencia SQLite via ADO.NET puro (`Microsoft.Data.Sqlite`, sem EF Core) com 
 ### Sprint 6 — Integracao e Polish
 MeetingOrchestrator montando o grafo audio -> STT -> LLM -> overlay -> persistencia por reuniao, StageRunner com startup fail-fast + rollback e shutdown best-effort (uma stage que falha nao impede o flush da persistencia), app tray-only com estado visual, degradacao para modo so-transcricao quando falta a API key, RetryPolicy com backoff e jitter, HealthTracker por componente, scrubber de segredos e crash reports locais, instrumentacao de latencia por estagio com percentis, installer Inno Setup self-contained e guia de uso.
 
-> **Validacao pendente:** o codigo do Sprint 6 nao foi compilado nem executado — o projeto e Windows-only e o ambiente de desenvolvimento usado nao tem o SDK .NET. Faltam os numeros reais do benchmark de latencia (Task 6-4) e a verificacao do instalador em VM limpa (Task 6-5). Checklist em [`installer/README.md`](installer/README.md).
+### Validacao real em Windows
+Primeira execucao de verdade do projeto: o build foi consertado (nao compilava), a suite inteira passou a rodar, foram criados os testes ponta a ponta, e a API do Claude e a da ElevenLabs foram exercitadas contra os servicos reais. Os defeitos encontrados estao documentados em [`docs/tests/WINDOWS-TEST-RUN.md`](docs/tests/WINDOWS-TEST-RUN.md) e [`docs/tests/E2E-COVERAGE.md`](docs/tests/E2E-COVERAGE.md).
 
 ## Testes
 
@@ -222,28 +243,37 @@ dotnet test
 
 # Rodar testes de um modulo
 dotnet test tests/ZefaIA.Audio.Tests
-dotnet test tests/ZefaIA.STT.Tests
+dotnet test tests/ZefaIA.Integration.Tests
 
 # Rodar teste especifico
 dotnet test --filter "EchoCancellerTests.Process_WithMatchingReference_ReducesEcho"
 ```
 
-Testes que requerem hardware de audio ou API keys sao marcados com `[Fact(Skip = "...")]` e nao executam em CI.
-
 | Projeto | Testes | Cobertura |
 |---------|--------|-----------|
-| ZefaIA.Audio.Tests | 44 | Resampler, captura, AEC, pipeline, WAV |
-| ZefaIA.STT.Tests | 82 | Factory, Whisper, ElevenLabs, engine, timeline, config, deteccao de idioma |
-| ZefaIA.Overlay.Tests | 44 | Models, NativeMethods, controller, markdown parser, AppSettings, templates, historico |
-| ZefaIA.LLM.Tests | 82 | Claude client, prompt builder, triggers, pipeline, orchestrator |
+| ZefaIA.Audio.Tests | 44 | Resampler, captura real (mic e loopback), AEC, pipeline, WAV |
+| ZefaIA.STT.Tests | 90 | Factory, Whisper, ElevenLabs, engine, timeline, idioma, caminho do modelo |
+| ZefaIA.Overlay.Tests | 73 | Layout das janelas, interacao e captura do overlay, markdown, settings, historico |
+| ZefaIA.LLM.Tests | 88 | Claude client, prompt builder, triggers, pipeline, orchestrator |
 | ZefaIA.Persistence.Tests | 73 | Repositorio SQLite, cascade delete, recorder, exportacao TXT/JSON |
 | ZefaIA.App.Tests | 132 | Stage runner, bootstrap, tray, retry, health, scrubber, latencia |
-| **Total** | **457** | |
+| ZefaIA.Integration.Tests | 25 | Pipeline ponta a ponta: audio → STT → trigger → LLM → overlay → SQLite → export |
+| **Total** | **525** | **519 passando, 6 opt-in** |
 
-> Os testes nunca foram executados neste repositorio — o alvo e `net8.0-windows` e
-> nao havia SDK .NET no ambiente de desenvolvimento. Os numeros acima contam
-> `[Fact]` e casos de `[InlineData]`, nao execucoes. Rode `dotnet test` no Windows
-> antes de confiar neles.
+### Testes opt-in
+
+Nao rodam por padrao porque dependem de download grande, chave paga ou rede.
+Ligue por variavel de ambiente:
+
+| Variavel | O que executa |
+|----------|---------------|
+| `ZEFA_RUN_WHISPER_INTEGRATION=1` | Baixa o modelo base e transcreve de verdade |
+| `ZEFA_RUN_ELEVENLABS_INTEGRATION=1` | Transcreve fala sintetizada contra a API real (precisa de `ELEVENLABS_API_KEY`) |
+| `ZEFA_RUN_ANTHROPIC_INTEGRATION=1` | Chama a API do Claude de verdade (precisa de `ANTHROPIC_API_KEY`) |
+
+Testes que dependem de hardware de audio usam `[RequiresAudioDeviceFact]`, que
+sonda os endpoints WASAPI em runtime: executam onde ha microfone e alto-falante,
+e pulam com motivo onde nao ha.
 
 ## Decisoes Tecnicas
 
@@ -252,7 +282,21 @@ Testes que requerem hardware de audio ou API keys sao marcados com `[Fact(Skip =
 - **Echo cancellation por software** — Filtro NLMS ao inves de depender de AEC do driver de audio
 - **Provider abstraction** — `ISTTProvider` permite trocar Whisper por ElevenLabs (ou qualquer outro) via config
 - **Reactive streams** — System.Reactive para buffering, backpressure e composicao de streams de audio
+- **Overlay clicavel por padrao** — click-through existe como API, mas nao ligado: e tudo-ou-nada por janela, entao um botao que o ligasse nunca conseguiria desliga-lo
+- **Alias de modelo sem data** — `claude-sonnet-5` em vez de um snapshot datado, que expira silenciosamente
 - **LGPD** — Dados de reuniao sao locais e por sessao; o usuario decide se salva
+
+## Limitacoes Conhecidas
+
+- **Sugestao automatica por silencio depende do audio do sistema.** O `SilenceTrigger`
+  observa o stream de loopback, e o WASAPI nao entrega nada quando nada esta tocando.
+  Falando sozinho ao microfone, use `Ctrl+Shift+Space`.
+- **So o atalho de sugestao esta ligado.** `Ctrl+Shift+Z` e `Ctrl+Shift+C` aparecem
+  nas Configuracoes mas ainda nao sao registrados.
+- **O registro do atalho falha em silencio** se outro app ja tiver a combinacao.
+- **O tamanho do overlay nao persiste** entre execucoes do app.
+- **A secao `LLM` do `appsettings.json` nao esta ligada** (ver Configuracao).
+- **`ZefaIA.LLM` fala com a API da Anthropic via `HttpClient` cru**; existe SDK oficial para C#.
 
 ## Licenca
 

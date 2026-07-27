@@ -1,7 +1,7 @@
 # Testes Ponta a Ponta (E2E)
 
 Projeto: `tests/ZefaIA.Integration.Tests`
-Estado: **21 testes, todos passando** (última execução: 2026-07-26, Windows 11 x64)
+Estado: **25 testes, todos passando** (última execução: 2026-07-27, Windows 11 x64)
 
 Antes disto o projeto existia mas continha apenas um `Placeholder.cs` — cada componente
 tinha teste isolado, mas a **costura entre eles nunca havia sido exercitada**.
@@ -76,6 +76,10 @@ FakeAudioSource ─┐
 | 13 | `WhenTheLlmFailsTheMeetingKeepsTranscribing` | Falha do LLM é reportada mas não derruba a transcrição |
 | 14 | `WithoutAnLlmClientTheMeetingStillTranscribesAndRecords` | Modo degradado sem `ANTHROPIC_API_KEY` |
 | 15 | `RateLimitingStopsASecondSuggestionInsideTheCooldown` | Rate limit do orquestrador respeitado |
+| 15a | `PressingTheHotkeyProducesASuggestionWithNoAudioPlaying` | **`Ctrl+Shift+Space` gera sugestão com o loopback em silêncio** — o caso que o gatilho de silêncio não atende |
+| 15b | `PressingTheHotkeyTwiceAsksAgainEvenWithTheSameTranscript` | Deduplicação não engole um pedido explícito |
+| 15c | `HotkeyWithoutAnLlmDoesNothingRatherThanFailing` | Atalho sem LLM não derruba a reunião |
+| 15d | `StoppingTheMeetingReleasesTheHotkey` | Atalho após o teardown não alcança o grafo destruído |
 | 16 | `DetectedLanguageRenamesTheSpeakersOnTheOverlay` | Detecção de idioma (en) renomeia para "Me"/"Other" |
 | 17 | `PortugueseKeepsTheDefaultSpeakerLabels` | pt-BR mantém "Eu"/"Interlocutor" |
 | 18 | `AFinishedMeetingExportsToTextAndJsonWithItsRealContent` | Export TXT e JSON com conteúdo real da reunião |
@@ -92,8 +96,10 @@ injetadas temporariamente para confirmar que a suíte detecta regressões:
 |---|---|
 | `SuggestionStreamPipeline` volta a emitir tokens avidamente | Teste 12 falhou com `Collection: ["[SEM"]` |
 | `MeetingRecorder` atribui tudo a "Eu" | Teste 7 falhou com `Expected "Interlocutor", Actual "Eu"` |
+| `MeetingOrchestrator` deixa de registrar o hotkey | Testes 15a/15b falharam por sugestão nenhuma chegar ao overlay |
+| `SuggestionOrchestrator` aplica dedup também ao hotkey | Teste 15b falhou — o segundo pedido explícito foi engolido |
 
-Ambas revertidas após a verificação.
+Todas revertidas após a verificação.
 
 ### Mudanças de produção que o E2E exigiu
 
@@ -111,10 +117,11 @@ Nenhuma das duas altera o comportamento em produção.
 
 ---
 
-## Lacuna conhecida: a API da Anthropic nunca foi exercitada de verdade
+## A integração com a API da Anthropic
 
-**Decisão:** adiado para uma etapa própria, a pedido. Este bloco existe para que não
-se perca.
+Esta seção começou como "lacuna conhecida": a API nunca havia sido chamada de verdade.
+**Isso foi fechado em 2026-07-27** — ver "Verificação contra a API real", no fim. O
+histórico dos achados fica registrado abaixo porque explica decisões do código atual.
 
 ### O que já está coberto (com mock/fake)
 
@@ -175,10 +182,14 @@ $env:ZEFA_RUN_ANTHROPIC_INTEGRATION = "1"
 dotnet test tests/ZefaIA.LLM.Tests --filter "FullyQualifiedName~LiveApi"
 ```
 
-> ⚠️ **Estes testes nunca foram executados.** Não há credencial disponível na máquina de
-> desenvolvimento, então a correção do L-01 está validada por compilação, testes de
-> unidade e inspeção — **não** contra a API real. Rodar isto é o primeiro passo assim que
-> houver uma chave, e é o que fecha definitivamente o L-01.
+**Executados em 2026-07-27 com uma chave real: os 3 passaram.** Isso fecha o L-01
+(o modelo `claude-sonnet-5` existe e é aceito), confirma que o corpo montado pelo
+cliente é válido, e confirma o L-04 (`cache_control` continua funcionando sem o
+header beta). O app também foi exercitado ponta a ponta contra a API de verdade,
+gerando sugestões reais no overlay.
+
+A chave usada foi de teste e não está em lugar nenhum do repositório — os testes a
+leem de `ANTHROPIC_API_KEY` e pulam sozinhos quando ela não existe.
 
 ## Como executar
 

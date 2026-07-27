@@ -19,6 +19,15 @@ ao lado do relogio.
 
 - Windows 10 versao 1903 ou superior (necessario para captura de audio do sistema)
 - Nenhuma instalacao de .NET — o instalador ja inclui tudo
+- **Microsoft Visual C++ 2015-2022 Redistributable (x64)** — o motor de transcricao
+  local usa bibliotecas nativas que nao carregam sem ele. O instalador avisa se
+  estiver faltando. Para instalar:
+
+  ```powershell
+  winget install Microsoft.VCRedist.2015+.x64
+  ```
+
+  Ou baixe em https://aka.ms/vs/17/release/vc_redist.x64.exe
 
 ---
 
@@ -53,7 +62,10 @@ Feche e reabra o Zefa IA depois de definir.
 > **Sem a chave o app continua funcionando** — transcreve, salva no historico e
 > exporta normalmente. Apenas as sugestoes ficam desligadas.
 
-Chave em https://console.anthropic.com/
+Chave em https://platform.claude.com/ → **API keys**.
+
+> Assinatura do Claude.ai (Pro/Max) **nao da acesso a API** — sao cobrados
+> separadamente. A API usa creditos pre-pagos, adicionados em *Billing*.
 
 ---
 
@@ -73,15 +85,28 @@ Com pressa? **Inicio Rapido** pula tudo isso e comeca a gravar na hora.
 
 ### Durante
 
-O overlay aparece com a transcricao ao vivo. A Zefa sugere sozinha quando
-detecta uma pausa de ~1,5s na fala — o momento em que voce provavelmente vai
-responder.
+O overlay aparece com a transcricao ao vivo, em duas abas: **Transcricao** e
+**Sugestoes**. Ele salta para Sugestoes quando uma chega — clique em
+**Transcricao** para voltar.
 
-| Atalho | Acao |
-|--------|------|
-| `Ctrl+Shift+Space` | Pedir sugestao agora |
-| `Ctrl+Shift+Z` | Mostrar/ocultar overlay |
-| `Ctrl+Shift+C` | Copiar ultima sugestao |
+Voce pode arrastar o overlay pelo cabecalho e **redimensionar por qualquer borda
+ou canto** (a alca fica no canto inferior direito). O tamanho vale enquanto o app
+estiver aberto; ao reiniciar ele volta ao padrao.
+
+| Atalho | Acao | Status |
+|--------|------|--------|
+| `Ctrl+Shift+Space` | Pedir sugestao agora | Funciona |
+| `Ctrl+Shift+Z` | Mostrar/ocultar overlay | **Nao implementado** |
+| `Ctrl+Shift+C` | Copiar ultima sugestao | **Nao implementado** |
+
+Os dois ultimos aparecem nas Configuracoes mas ainda nao sao registrados no
+Windows. Use o botao de copiar no proprio overlay enquanto isso.
+
+> **Sugestao automatica por silencio:** a Zefa tambem sugere sozinha apos ~1,5s
+> de silencio — mas o gatilho observa o **audio que sai pelas caixas**, nao o seu
+> microfone. Em uma reuniao de verdade isso funciona (a voz do outro entra por
+> ali). Testando sozinho, com o PC mudo, nenhuma sugestao automatica acontece:
+> use `Ctrl+Shift+Space`.
 
 O icone da bandeja fica **vermelho** enquanto grava.
 
@@ -129,7 +154,12 @@ Botao direito na bandeja → **Historico**.
 | Precisa de internet | Nao | Sim |
 
 **Padrao: Whisper Local.** Escolha ElevenLabs so se a precisao do Whisper nao
-estiver dando conta — exige `ELEVENLABS_API_KEY` definida como a chave do Claude.
+estiver dando conta. Exige `ELEVENLABS_API_KEY`, definida do mesmo jeito que a
+chave do Claude. A chave se gera em https://elevenlabs.io → perfil → **API Keys**.
+
+> **ElevenLabs nao substitui o Claude.** Ela troca apenas quem transcreve o audio.
+> As sugestoes continuam vindo do Claude, e sem `ANTHROPIC_API_KEY` continuam
+> desligadas — configurar ElevenLabs sozinha nao faz a Zefa responder nada.
 
 ### Modelos do Whisper
 
@@ -175,8 +205,22 @@ botao Deletar no Historico.
 ### O overlay nao aparece
 
 1. Confirme que a reuniao esta rodando — icone da bandeja vermelho
-2. Aperte `Ctrl+Shift+Z` (pode ter sido ocultado sem querer)
-3. Se estiver em monitor secundario, mude a posicao nas Configuracoes
+2. Se estiver em monitor secundario, mude a posicao nas Configuracoes
+3. Duplo-clique no icone da bandeja alterna a exibicao
+
+### "Nao foi possivel carregar o motor Whisper"
+
+A mensagem diz qual dos dois casos e:
+
+- **"a biblioteca nativa nao foi encontrada"** → problema de empacotamento: a
+  pasta `runtimes` precisa estar junto do executavel
+- **"o Windows recusou carrega-la"** → falta o Visual C++ Redistributable:
+  `winget install Microsoft.VCRedist.2015+.x64`
+
+### A primeira reuniao trava ao iniciar
+
+Nao travou: esta baixando o modelo do Whisper (~142 MB) **sem barra de
+progresso**. Aguarde alguns minutos. Nas proximas vezes e imediato.
 
 ### Nao transcreve nada
 
@@ -199,11 +243,27 @@ outros). Se falta um lado:
 
 ### Nao aparecem sugestoes
 
-1. `ANTHROPIC_API_KEY` esta definida? Reinicie o app depois de definir
-2. Alguem falou algo? A Zefa nao sugere sem transcricao recente
-3. Ela responde `[SEM SUGESTAO]` de proposito quando nao tem nada util a dizer —
+1. **Aperte `Ctrl+Shift+Space`.** A sugestao automatica depende do audio que sai
+   pelas caixas; testando sozinho com o PC mudo ela nunca dispara. Esse e de longe
+   o motivo mais comum
+2. `ANTHROPIC_API_KEY` esta definida **no nivel do usuario**? Uma variavel setada
+   numa janela do PowerShell nao chega ao app aberto pelo Explorer. Reinicie o app
+   depois de definir
+3. Alguem falou algo? A Zefa nao sugere sem transcricao recente
+4. Ela responde `[SEM SUGESTAO]` de proposito quando nao tem nada util a dizer —
    isso e comportamento normal, nao falha
-4. Ha limite de 4 sugestoes por minuto para controlar custo
+5. Ha limite de 4 sugestoes por minuto para controlar custo
+
+### O atalho `Ctrl+Shift+Space` nao faz nada
+
+O Windows entrega uma combinacao global a quem registrou primeiro, e o registro
+falha **em silencio**. Se outro app ja usa essa combinacao, feche-o para testar.
+Trocar o atalho ainda nao esta implementado.
+
+### Creditos e cobranca do Claude
+
+Chave valida mas sem creditos retorna erro de billing na primeira sugestao.
+Adicione creditos em https://platform.claude.com → **Billing**.
 
 ### O app esta pesado
 

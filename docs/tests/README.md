@@ -29,9 +29,23 @@ docs/tests/
 - Testes marcados com `Skip` indicam dependencia de hardware (Windows audio device)
 - Framework: **xUnit** com **Moq** para mocking
 
+## Estado atual da suite
+
+**525 testes: 519 passando, 6 opt-in.** Ultima execucao completa em Windows 11 x64.
+
+| Projeto | Testes |
+|---|---:|
+| ZefaIA.App.Tests | 132 |
+| ZefaIA.STT.Tests | 90 |
+| ZefaIA.LLM.Tests | 88 |
+| ZefaIA.Overlay.Tests | 73 |
+| ZefaIA.Persistence.Tests | 73 |
+| ZefaIA.Audio.Tests | 44 |
+| ZefaIA.Integration.Tests | 25 |
+
 ## Testes ponta a ponta (E2E)
 
-Ver [`E2E-COVERAGE.md`](E2E-COVERAGE.md) — 21 testes em `tests/ZefaIA.Integration.Tests`
+Ver [`E2E-COVERAGE.md`](E2E-COVERAGE.md) — 25 testes em `tests/ZefaIA.Integration.Tests`
 dirigem o `MeetingOrchestrator` de producao (audio -> STT -> trigger -> LLM -> overlay
 -> SQLite -> export), com apenas as fronteiras de processo substituidas.
 
