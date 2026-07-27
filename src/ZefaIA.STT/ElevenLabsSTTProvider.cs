@@ -22,6 +22,8 @@ public sealed class ElevenLabsSTTProvider : ISTTProvider
     private readonly ILogger<ElevenLabsSTTProvider>? _logger;
 
     private const string WsEndpoint = "wss://api.elevenlabs.io/v1/speech-to-text/realtime";
+    private const string RealtimeModelId = "scribe_v2_realtime";
+    private const int TargetSampleRate = 16000;
     private const int MaxReconnectAttempts = 5;
     private const int ReconnectBaseDelayMs = 1000;
 
@@ -69,16 +71,7 @@ public sealed class ElevenLabsSTTProvider : ISTTProvider
             await ReconnectAsync(ct);
         }
 
-        var message = new ElevenLabsAudioMessage
-        {
-            Audio = Convert.ToBase64String(chunk.PcmData),
-            SampleRate = chunk.SampleRate
-        };
-
-        var json = JsonSerializer.Serialize(message, JsonContext.Default.ElevenLabsAudioMessage);
-        var bytes = Encoding.UTF8.GetBytes(json);
-
-        await _webSocket!.SendAsync(bytes, WebSocketMessageType.Text, true, ct);
+        await SendChunkAsync(chunk.PcmData, chunk.SampleRate, commit: false, ct);
     }
 
     public async Task FlushAsync()
@@ -88,9 +81,22 @@ public sealed class ElevenLabsSTTProvider : ISTTProvider
         if (_webSocket?.State != WebSocketState.Open)
             return;
 
-        var flushMessage = "{\"flush\": true}";
-        var bytes = Encoding.UTF8.GetBytes(flushMessage);
-        await _webSocket.SendAsync(bytes, WebSocketMessageType.Text, true, CancellationToken.None);
+        // There is no separate flush message in this protocol: a commit rides on an audio
+        // chunk, so an empty one closes whatever the VAD has buffered.
+        await SendChunkAsync([], TargetSampleRate, commit: true, CancellationToken.None);
+    }
+
+    private async Task SendChunkAsync(byte[] pcm, int sampleRate, bool commit, CancellationToken ct)
+    {
+        var message = new ElevenLabsAudioMessage
+        {
+            AudioBase64 = Convert.ToBase64String(pcm),
+            Commit = commit,
+            SampleRate = sampleRate
+        };
+
+        var json = JsonSerializer.Serialize(message, JsonContext.Default.ElevenLabsAudioMessage);
+        await _webSocket!.SendAsync(Encoding.UTF8.GetBytes(json), WebSocketMessageType.Text, true, ct);
     }
 
     private async Task ConnectAsync(CancellationToken ct)
@@ -99,11 +105,22 @@ public sealed class ElevenLabsSTTProvider : ISTTProvider
         _webSocket = new ClientWebSocket();
         _webSocket.Options.SetRequestHeader("xi-api-key", _apiKey);
 
-        var uri = new Uri(WsEndpoint);
+        // The session is configured entirely through the query string. Without
+        // audio_format the server assumes a different encoding than the 16 kHz mono PCM
+        // the pipeline produces, and commit_strategy=vad is what segments on silence
+        // instead of waiting for an explicit commit per utterance.
+        var query = new List<string>
+        {
+            $"model_id={RealtimeModelId}",
+            "audio_format=pcm_16000",
+            "commit_strategy=vad"
+        };
 
         var language = _config.Language ?? "auto";
-        if (language != "auto")
-            uri = new Uri($"{WsEndpoint}?language={language}");
+        if (!string.Equals(language, "auto", StringComparison.OrdinalIgnoreCase))
+            query.Add($"language_code={Uri.EscapeDataString(language)}");
+
+        var uri = new Uri($"{WsEndpoint}?{string.Join("&", query)}");
 
         await _webSocket.ConnectAsync(uri, ct);
         _reconnectAttempts = 0;
@@ -177,33 +194,74 @@ public sealed class ElevenLabsSTTProvider : ISTTProvider
         try
         {
             var response = JsonSerializer.Deserialize(json, JsonContext.Default.ElevenLabsResponse);
-            if (response == null || response.Type != "transcript")
-                return;
+            if (response == null) return;
 
-            if (string.IsNullOrWhiteSpace(response.Text))
-                return;
+            switch (response.MessageType)
+            {
+                // Interim text that keeps being revised as more audio arrives.
+                case "partial_transcript":
+                    Emit(response, isFinal: false);
+                    break;
 
-            var segment = new TranscriptionSegment(
-                Text: response.Text.Trim(),
-                Language: response.Language ?? _config.Language ?? "unknown",
-                Confidence: response.Confidence ?? 0f,
-                StartTime: _sessionOffset + TimeSpan.FromSeconds(response.StartTime ?? 0),
-                EndTime: _sessionOffset + TimeSpan.FromSeconds(response.EndTime ?? 0),
-                Source: AudioSourceType.Microphone,
-                IsFinal: response.IsFinal ?? false
-            );
+                // "final" settles the wording; "committed" closes the segment. Both are
+                // final as far as the rest of the pipeline is concerned.
+                case "final_transcript":
+                case "committed_transcript":
+                case "committed_transcript_with_timestamps":
+                    Emit(response, isFinal: true);
+                    break;
 
-            var args = new TranscriptionSegmentEventArgs(segment, DateTime.UtcNow);
+                case "rate_limited":
+                    _logger?.LogWarning("ElevenLabs rate limited: {Error}", response.Error);
+                    break;
 
-            if (segment.IsFinal)
-                SegmentReceived?.Invoke(this, args);
-            else
-                PartialReceived?.Invoke(this, args);
+                case "input_error":
+                    // Worth shouting about: it means we are speaking the wrong protocol,
+                    // which previously went unnoticed because nothing ever transcribed.
+                    _logger?.LogError("ElevenLabs rejected our message: {Error}", response.Error);
+                    break;
+
+                case "session_started":
+                    _logger?.LogInformation("ElevenLabs session started");
+                    break;
+            }
         }
         catch (JsonException ex)
         {
             _logger?.LogWarning(ex, "Failed to parse ElevenLabs response");
         }
+    }
+
+    private void Emit(ElevenLabsResponse response, bool isFinal)
+    {
+        if (string.IsNullOrWhiteSpace(response.Text))
+            return;
+
+        // Word timestamps only come with the *_with_timestamps variant; otherwise the
+        // segment is stamped with the session clock, which is what the timeline uses.
+        var start = response.Words?.FirstOrDefault()?.Start ?? 0;
+        var end = response.Words?.LastOrDefault()?.End ?? start;
+
+        var segment = new TranscriptionSegment(
+            Text: response.Text.Trim(),
+            // Null-safe on purpose: partial_transcript carries no language_code, and the
+            // config is only populated after InitializeAsync.
+            Language: response.LanguageCode ?? _config?.Language ?? "unknown",
+            Confidence: isFinal ? 1f : 0.5f,
+            StartTime: _sessionOffset + TimeSpan.FromSeconds(start),
+            EndTime: _sessionOffset + TimeSpan.FromSeconds(end),
+            // The TranscriptionEngine rewrites this per channel; the provider itself
+            // cannot know whether it was handed mic or loopback audio.
+            Source: AudioSourceType.Microphone,
+            IsFinal: isFinal
+        );
+
+        var args = new TranscriptionSegmentEventArgs(segment, DateTime.UtcNow);
+
+        if (isFinal)
+            SegmentReceived?.Invoke(this, args);
+        else
+            PartialReceived?.Invoke(this, args);
     }
 
     private void ThrowIfNotInitialized()
@@ -240,37 +298,61 @@ public sealed class ElevenLabsSTTProvider : ISTTProvider
     }
 }
 
+/// <summary>
+/// The only client-to-server message the realtime endpoint accepts. Every field here is
+/// required by the protocol: an earlier version sent {"audio":..., "sample_rate":...},
+/// which the server rejected with
+/// {"message_type":"input_error","error":"Message must be a valid protocol message"}
+/// for every single chunk — so this provider never transcribed anything.
+/// </summary>
 internal record ElevenLabsAudioMessage
 {
-    [JsonPropertyName("audio")]
-    public string Audio { get; init; } = string.Empty;
+    [JsonPropertyName("message_type")]
+    public string MessageType { get; init; } = "input_audio_chunk";
+
+    [JsonPropertyName("audio_base_64")]
+    public string AudioBase64 { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Forces the server to close the current segment. Left false while
+    /// commit_strategy=vad segments on silence; set on <see cref="ElevenLabsSTTProvider.FlushAsync"/>.
+    /// </summary>
+    [JsonPropertyName("commit")]
+    public bool Commit { get; init; }
 
     [JsonPropertyName("sample_rate")]
     public int SampleRate { get; init; }
 }
 
+/// <summary>
+/// Server-to-client message. The discriminator is <c>message_type</c>, not <c>type</c>:
+/// reading the wrong field meant every response was silently discarded.
+/// </summary>
 internal record ElevenLabsResponse
 {
-    [JsonPropertyName("type")]
-    public string? Type { get; init; }
+    [JsonPropertyName("message_type")]
+    public string? MessageType { get; init; }
 
     [JsonPropertyName("text")]
     public string? Text { get; init; }
 
-    [JsonPropertyName("is_final")]
-    public bool? IsFinal { get; init; }
+    [JsonPropertyName("language_code")]
+    public string? LanguageCode { get; init; }
 
-    [JsonPropertyName("language")]
-    public string? Language { get; init; }
+    [JsonPropertyName("error")]
+    public string? Error { get; init; }
 
-    [JsonPropertyName("confidence")]
-    public float? Confidence { get; init; }
+    [JsonPropertyName("words")]
+    public ElevenLabsWord[]? Words { get; init; }
+}
 
-    [JsonPropertyName("start_time")]
-    public double? StartTime { get; init; }
+internal record ElevenLabsWord
+{
+    [JsonPropertyName("start")]
+    public double? Start { get; init; }
 
-    [JsonPropertyName("end_time")]
-    public double? EndTime { get; init; }
+    [JsonPropertyName("end")]
+    public double? End { get; init; }
 }
 
 [JsonSerializable(typeof(ElevenLabsAudioMessage))]
