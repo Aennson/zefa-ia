@@ -20,7 +20,35 @@
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.1" />
+    <!--
+      Referenced here as well as in ZefaIA.STT so the package's .targets are imported
+      into the executable's project. Coming in only through the project reference, the
+      native whisper DLLs reached the build output but were dropped by the single-file
+      publish, and speech-to-text died at "Failed to load native whisper library".
+    -->
+    <PackageReference Include="Whisper.net.Runtime" Version="1.7.3" />
   </ItemGroup>
+  <!--
+    Whisper.net's loader probes for its native DLLs at
+    <app>\runtimes\<rid>\whisper.dll. PublishSingleFile bundles native libraries into
+    the executable and self-extracts them into a flat temp folder, so that path stops
+    existing and speech-to-text fails with "Failed to load native whisper library" -
+    which looks exactly like a missing VC++ runtime but is not.
+
+    Keeping just these files outside the bundle preserves the folder layout the loader
+    expects; everything else still ships as a single file.
+  -->
+  <Target Name="ZefaKeepWhisperNativesOutsideBundle"
+          AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <ResolvedFileToPublish
+          Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Replace('\','/').StartsWith('runtimes/'))
+                     AND $([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').Contains('whisper'))">
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+
   <ItemGroup>
     <ProjectReference Include="..\ZefaIA.Audio\ZefaIA.Audio.csproj" />
     <ProjectReference Include="..\ZefaIA.STT\ZefaIA.STT.csproj" />

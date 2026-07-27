@@ -60,4 +60,22 @@ public class ModelPathResolutionTests
         Assert.True(Path.IsPathRooted(resolved));
         Assert.EndsWith("models", resolved, StringComparison.OrdinalIgnoreCase);
     }
+
+    [Fact]
+    public void NativeLoadFailure_NamesTheCauseItActuallyFound()
+    {
+        // The first version of this message always blamed a missing VC++ runtime. A real
+        // user then went looking for a redistributable that was already installed, when
+        // the actual fault was the native DLL being dropped by the single-file publish.
+        var message = WhisperSTTProvider.DescribeNativeLoadFailure();
+        var nativeExists = File.Exists(
+            Path.Combine(AppContext.BaseDirectory, "runtimes", "win-x64", "whisper.dll"));
+
+        Assert.Contains("runtimes", message);
+
+        if (nativeExists)
+            Assert.Contains("Visual C++", message);
+        else
+            Assert.Contains("empacotamento", message);
+    }
 }

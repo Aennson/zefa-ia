@@ -1,3 +1,4 @@
+﻿using System.Runtime.InteropServices;
 using System.Collections.Concurrent;
 using ZefaIA.Core.Interfaces;
 using ZefaIA.Core.Models;
@@ -61,14 +62,7 @@ public sealed class WhisperSTTProvider : ISTTProvider
         }
         catch (Exception ex) when (ex.Message.Contains("native whisper library", StringComparison.OrdinalIgnoreCase))
         {
-            // whisper.dll links against the MSVC runtime. On a machine without the VC++
-            // redistributable it fails to load with Win32 error 126, and Whisper.net's
-            // own message ("Cannot load the library on this platform") sends people
-            // looking for an architecture problem that isn't there.
-            throw new InvalidOperationException(
-                "Nao foi possivel carregar o motor Whisper. Instale o Microsoft Visual C++ " +
-                "2015-2022 Redistributable (x64): winget install Microsoft.VCRedist.2015+.x64 " +
-                "ou https://aka.ms/vs/17/release/vc_redist.x64.exe", ex);
+            throw new InvalidOperationException(DescribeNativeLoadFailure(), ex);
         }
 
         var builder = _factory.CreateBuilder()
@@ -213,12 +207,44 @@ public sealed class WhisperSTTProvider : ISTTProvider
     }
 
     /// <summary>
+    /// Explains why the native engine would not load. Whisper.net reports every cause as
+    /// "Cannot load the library on this platform", and there are two very different ones:
+    /// the DLL is missing (a packaging problem) or it is present but Windows refuses to
+    /// load it (usually the VC++ runtime). Naming only the second sent a real user
+    /// chasing a redistributable that was already installed, so check first.
+    /// </summary>
+    internal static string DescribeNativeLoadFailure()
+    {
+        var rid = RuntimeInformation.ProcessArchitecture switch
+        {
+            Architecture.Arm64 => "win-arm64",
+            Architecture.X86 => "win-x86",
+            _ => "win-x64"
+        };
+
+        var expected = Path.Combine(AppContext.BaseDirectory, "runtimes", rid, "whisper.dll");
+
+        if (!File.Exists(expected))
+        {
+            return "Nao foi possivel carregar o motor Whisper: a biblioteca nativa nao foi " +
+                   $"encontrada em '{expected}'. Isso indica um problema de empacotamento â€” " +
+                   "a pasta 'runtimes' precisa acompanhar o executavel.";
+        }
+
+        return "Nao foi possivel carregar o motor Whisper: a biblioteca nativa existe em " +
+               $"'{expected}' mas o Windows recusou carrega-la. A causa mais comum e a falta " +
+               "do Microsoft Visual C++ 2015-2022 Redistributable (x64): " +
+               "winget install Microsoft.VCRedist.2015+.x64 " +
+               "ou https://aka.ms/vs/17/release/vc_redist.x64.exe";
+    }
+
+    /// <summary>
     /// Turns the configured model directory into an absolute path that does not depend on
     /// the process working directory.
     ///
     /// "./models" used to resolve against the CWD, so launching the executable from
-    /// another folder — <c>&amp; "C:\...\ZefaIA.App.exe"</c> from a home directory, for
-    /// instance — silently re-downloaded 141 MB into that folder instead of finding the
+    /// another folder â€” <c>&amp; "C:\...\ZefaIA.App.exe"</c> from a home directory, for
+    /// instance â€” silently re-downloaded 141 MB into that folder instead of finding the
     /// copy shipped next to the app.
     ///
     /// Relative paths now resolve next to the executable, falling back to per-user app
