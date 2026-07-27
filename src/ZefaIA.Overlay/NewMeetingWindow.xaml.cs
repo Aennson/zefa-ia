@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 
 namespace ZefaIA.Overlay;
 
@@ -11,6 +12,16 @@ public partial class NewMeetingWindow : Window
     public NewMeetingWindow()
     {
         InitializeComponent();
+    }
+
+    /// <summary>
+    /// The window draws its own chrome (WindowStyle="None"), so there is no title bar
+    /// for Windows to drag. The header stands in for one.
+    /// </summary>
+    private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ButtonState == MouseButtonState.Pressed)
+            DragMove();
     }
 
     private void BtnTemplate_Click(object sender, RoutedEventArgs e)

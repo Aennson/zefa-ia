@@ -2,83 +2,167 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Zefa IA - Nova Reuniao"
-        Width="460" Height="440"
+        Width="560"
+        MinHeight="560" MaxHeight="820"
+        SizeToContent="Height"
         WindowStartupLocation="CenterScreen"
-        Background="#1A1A2E"
-        ResizeMode="NoResize">
+        WindowStyle="None" ResizeMode="NoResize"
+        AllowsTransparency="True" Background="Transparent"
+        FontFamily="{DynamicResource AppFont}">
 
+    <!--
+        SizeToContent="Height" with a MinHeight/MaxHeight pair, instead of the fixed
+        440px this window used to have. That height was smaller than the form needed
+        once display scaling was applied, and WPF responds by compressing the
+        star-sized row rather than clipping — so the footer buttons were drawn on top
+        of the Participantes field. Sizing to content removes the guess, and the
+        ScrollViewer keeps it honest on a short screen.
+    -->
     <Window.Resources>
-        <Style TargetType="TextBlock" x:Key="SectionHeader">
-            <Setter Property="Foreground" Value="#A78BFA"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,12,0,8"/>
-        </Style>
-        <Style TargetType="TextBlock" x:Key="FieldLabel">
-            <Setter Property="Foreground" Value="#CCFFFFFF"/>
-            <Setter Property="FontSize" Value="12"/>
-            <Setter Property="Margin" Value="0,4,0,2"/>
-        </Style>
-        <Style TargetType="TextBox" x:Key="FieldTextBox">
-            <Setter Property="Margin" Value="0,2,0,6"/>
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Padding" Value="4,2"/>
-        </Style>
-        <Style TargetType="Button" x:Key="TemplateButton">
-            <Setter Property="Width" Value="80"/>
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Margin" Value="0,0,6,0"/>
-            <Setter Property="Background" Value="#2D2D44"/>
-            <Setter Property="Foreground" Value="#CCFFFFFF"/>
-            <Setter Property="BorderBrush" Value="#444466"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/ZefaIA.Overlay;component/Themes/ZefaTheme.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Chip de template: seleciona e preenche o formulario -->
+            <Style x:Key="TemplateChip" TargetType="Button">
+                <Setter Property="Height" Value="34" />
+                <Setter Property="Padding" Value="16,0" />
+                <Setter Property="Margin" Value="0,0,8,8" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+                <Setter Property="Background" Value="{StaticResource BgBaseBrush}" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="bd" Background="{TemplateBinding Background}"
+                                    BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                    CornerRadius="{StaticResource CornerPill}"
+                                    Padding="{TemplateBinding Padding}">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="bd" Property="Background" Value="{StaticResource CardHoverBrush}" />
+                                    <Setter TargetName="bd" Property="BorderBrush" Value="{StaticResource AccentBrush}" />
+                                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!--
+                Defined standalone rather than BasedOn="{StaticResource Caption}":
+                resolving a base style across nested merged dictionaries leaves the
+                inherited Foreground unset at render time.
+            -->
+            <Style x:Key="FieldLabel" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="Foreground" Value="{StaticResource TextSecondaryBrush}" />
+                <Setter Property="Margin" Value="2,18,0,6" />
+            </Style>
+        </ResourceDictionary>
     </Window.Resources>
 
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <Border Background="{StaticResource BgLayerBrush}" CornerRadius="16"
+            BorderBrush="{StaticResource BorderStrongBrush}" BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="30" ShadowDepth="8" Opacity="0.55" Color="Black" />
+        </Border.Effect>
 
-        <!-- Header -->
-        <TextBlock Grid.Row="0" Text="Nova Reuniao" Style="{StaticResource SectionHeader}" FontSize="18"/>
+        <Grid Margin="28">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
 
-        <!-- Form -->
-        <StackPanel Grid.Row="1">
-            <TextBlock Text="Titulo (opcional)" Style="{StaticResource FieldLabel}"/>
-            <TextBox x:Name="TxtTitle" Style="{StaticResource FieldTextBox}"/>
+            <!-- Cabecalho (tambem arrasta a janela, que nao tem barra de titulo) -->
+            <Grid Grid.Row="0" Margin="0,0,0,4" Background="Transparent"
+                  MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="42" Height="42" CornerRadius="11"
+                            Background="{StaticResource AccentGradientBrush}"
+                            VerticalAlignment="Center">
+                        <TextBlock Text="&#xE720;" Style="{StaticResource Glyph}"
+                                   FontSize="20" Foreground="White" />
+                    </Border>
+                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="Nova Reuniao" Style="{StaticResource H1}" />
+                        <TextBlock Text="O contexto e opcional, mas melhora as sugestoes"
+                                   Style="{StaticResource Caption}" Margin="0,2,0,0" />
+                    </StackPanel>
+                </StackPanel>
+                <Button x:Name="BtnClose" Style="{StaticResource IconButton}" Content="&#xE711;"
+                        HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Click="BtnCancel_Click" ToolTip="Fechar" />
+            </Grid>
 
-            <TextBlock Text="Template" Style="{StaticResource FieldLabel}"/>
-            <StackPanel Orientation="Horizontal" Margin="0,2,0,8">
-                <Button Content="1:1" Style="{StaticResource TemplateButton}" Click="BtnTemplate_Click" Tag="0"/>
-                <Button Content="Standup" Style="{StaticResource TemplateButton}" Click="BtnTemplate_Click" Tag="1"/>
-                <Button Content="Review" Style="{StaticResource TemplateButton}" Click="BtnTemplate_Click" Tag="2"/>
-                <Button Content="Custom" Style="{StaticResource TemplateButton}" Click="BtnTemplate_Click" Tag="3"/>
-            </StackPanel>
+            <!-- Formulario -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled" Padding="0,0,4,0">
+                <StackPanel>
+                    <TextBlock Text="TITULO" Style="{StaticResource FieldLabel}" Margin="2,8,0,6" />
+                    <TextBox x:Name="TxtTitle" Style="{StaticResource AppTextBox}"
+                             ToolTip="Deixe em branco para gerar um titulo com a data" />
 
-            <TextBlock Text="Agenda / Contexto" Style="{StaticResource FieldLabel}"/>
-            <TextBox x:Name="TxtAgenda" Height="60" AcceptsReturn="True"
-                     TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                     Margin="0,2,0,6"/>
+                    <TextBlock Text="TEMPLATE" Style="{StaticResource FieldLabel}" />
+                    <WrapPanel>
+                        <Button Content="1:1" Style="{StaticResource TemplateChip}" Click="BtnTemplate_Click" Tag="0" />
+                        <Button Content="Standup" Style="{StaticResource TemplateChip}" Click="BtnTemplate_Click" Tag="1" />
+                        <Button Content="Review" Style="{StaticResource TemplateChip}" Click="BtnTemplate_Click" Tag="2" />
+                        <Button Content="Custom" Style="{StaticResource TemplateChip}" Click="BtnTemplate_Click" Tag="3" />
+                    </WrapPanel>
 
-            <TextBlock Text="Objetivo" Style="{StaticResource FieldLabel}"/>
-            <TextBox x:Name="TxtObjective" Style="{StaticResource FieldTextBox}"/>
+                    <TextBlock Text="AGENDA / CONTEXTO" Style="{StaticResource FieldLabel}" Margin="2,10,0,6" />
+                    <TextBox x:Name="TxtAgenda" Style="{StaticResource AppTextBox}"
+                             Height="96" AcceptsReturn="True" TextWrapping="Wrap"
+                             VerticalContentAlignment="Top" Padding="14,10"
+                             VerticalScrollBarVisibility="Auto" />
 
-            <TextBlock Text="Participantes" Style="{StaticResource FieldLabel}"/>
-            <TextBox x:Name="TxtParticipants" Style="{StaticResource FieldTextBox}"/>
-        </StackPanel>
+                    <TextBlock Text="OBJETIVO" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="TxtObjective" Style="{StaticResource AppTextBox}" />
 
-        <!-- Buttons -->
-        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
-            <Button Content="Cancelar" Width="90" Height="32" Margin="0,0,8,0"
-                    Click="BtnCancel_Click"/>
-            <Button Content="Inicio Rapido" Width="100" Height="32" Margin="0,0,8,0"
-                    Background="#2D2D44" Foreground="#CCFFFFFF"
-                    Click="BtnQuickStart_Click"/>
-            <Button Content="Iniciar Reuniao" Width="120" Height="32"
-                    Background="#7C3AED" Foreground="White"
-                    Click="BtnStart_Click"/>
-        </StackPanel>
-    </Grid>
+                    <TextBlock Text="PARTICIPANTES" Style="{StaticResource FieldLabel}" />
+                    <TextBox x:Name="TxtParticipants" Style="{StaticResource AppTextBox}" />
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Rodape -->
+            <Grid Grid.Row="2" Margin="0,24,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button Grid.Column="0" x:Name="BtnCancel" Style="{StaticResource SecondaryButton}"
+                        Content="Cancelar" HorizontalAlignment="Left" Width="120"
+                        Click="BtnCancel_Click" />
+
+                <Button Grid.Column="1" x:Name="BtnQuickStart" Style="{StaticResource SecondaryButton}"
+                        Margin="0,0,10,0" Click="BtnQuickStart_Click"
+                        ToolTip="Comeca imediatamente, sem agenda nem objetivo">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE916;" FontFamily="{StaticResource IconFont}" FontSize="15"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="Inicio Rapido" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+
+                <Button Grid.Column="2" x:Name="BtnStart" Style="{StaticResource PrimaryButton}"
+                        Click="BtnStart_Click" IsDefault="True">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE768;" FontFamily="{StaticResource IconFont}" FontSize="15"
+                                   VerticalAlignment="Center" Margin="0,0,8,0" />
+                        <TextBlock Text="Iniciar Reuniao" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Grid>
+    </Border>
 </Window>

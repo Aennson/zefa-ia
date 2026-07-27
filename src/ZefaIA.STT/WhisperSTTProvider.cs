@@ -212,9 +212,54 @@ public sealed class WhisperSTTProvider : ISTTProvider
         return rms < threshold;
     }
 
+    /// <summary>
+    /// Turns the configured model directory into an absolute path that does not depend on
+    /// the process working directory.
+    ///
+    /// "./models" used to resolve against the CWD, so launching the executable from
+    /// another folder — <c>&amp; "C:\...\ZefaIA.App.exe"</c> from a home directory, for
+    /// instance — silently re-downloaded 141 MB into that folder instead of finding the
+    /// copy shipped next to the app.
+    ///
+    /// Relative paths now resolve next to the executable, falling back to per-user app
+    /// data when that folder is read-only (an install under Program Files).
+    /// </summary>
+    internal static string ResolveModelDirectory(string configuredPath)
+    {
+        if (string.IsNullOrWhiteSpace(configuredPath))
+            configuredPath = "./models";
+
+        if (Path.IsPathRooted(configuredPath))
+            return configuredPath;
+
+        var besideExecutable = Path.GetFullPath(
+            Path.Combine(AppContext.BaseDirectory, configuredPath));
+
+        try
+        {
+            Directory.CreateDirectory(besideExecutable);
+
+            // Creating the directory succeeds on a read-only parent in some cases, so
+            // probe for write access the only way that is reliable: write something.
+            var probe = Path.Combine(besideExecutable, $".write-probe-{Guid.NewGuid():N}");
+            File.WriteAllBytes(probe, []);
+            File.Delete(probe);
+
+            return besideExecutable;
+        }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
+        {
+            var perUser = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "ZefaIA", "models");
+            Directory.CreateDirectory(perUser);
+            return perUser;
+        }
+    }
+
     private static async Task<string> EnsureModelAsync(string modelPath, string modelSize, CancellationToken ct)
     {
-        Directory.CreateDirectory(modelPath);
+        modelPath = ResolveModelDirectory(modelPath);
 
         var modelFile = Path.Combine(modelPath, $"ggml-{modelSize}.bin");
 

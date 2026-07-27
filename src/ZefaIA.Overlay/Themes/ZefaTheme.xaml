@@ -1,0 +1,24 @@
+<!--
+    Single entry point for the visual language, so a window merges one dictionary
+    instead of three.
+
+    Palette.xaml and Controls.xaml are the design system from the SoundboardMic
+    project (github.com/Aennson/SoundboardMic), adopted here so both apps look like
+    they came from the same place. The only omission is the slider style, which
+    depended on a value converter this app has no use for.
+
+    Windows merge this into their own Window.Resources rather than relying on
+    Application.Resources: the overlay lives in a class library that is also loaded
+    by tests, where no Application exists to resolve the lookups.
+-->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="/ZefaIA.Overlay;component/Themes/Palette.xaml" />
+        <ResourceDictionary Source="/ZefaIA.Overlay;component/Themes/Controls.xaml" />
+    </ResourceDictionary.MergedDictionaries>
+
+    <FontFamily x:Key="AppFont">Segoe UI Variable, Segoe UI</FontFamily>
+
+</ResourceDictionary>
